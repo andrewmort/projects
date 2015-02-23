@@ -9,7 +9,6 @@ using namespace std;
 #define FALSE 0
 #define UNASSIGNED -1
 
-bool solve(vector<vector<int> > &clauses);
 
 // Variable has index (or name) and value
 typedef struct variable {
@@ -22,5 +21,6 @@ typedef struct clause {
     vector<variable> vars;
 } clause;
 
+bool solve(vector<clause *> &clauses);
 
 #endif

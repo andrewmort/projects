@@ -12,6 +12,7 @@ using std::ifstream;
 #include <zlib.h>
 #include <cstdlib>
 #include <cstdio>
+#include "sat.h"
 
 //=====================================================================
 // DIMACS Parser:
@@ -70,19 +71,22 @@ int parseInt(StreamBuffer &in) {
 }
 
 
-void readClause(StreamBuffer &in, vector<vector<int> > &clauses) {
+void readClause(StreamBuffer &in, vector<clause * > &clauses) {
   int parsed_lit;
-  vector<int> newClause;
+  variable v;
+  clause *new_clause = new clause;
   while (true) {
     parsed_lit = parseInt(in);
     if (parsed_lit == 0) break;
-    newClause.push_back(parsed_lit);
+    v.index = parsed_lit;
+    v.value = UNASSIGNED;
+    new_clause->vars.push_back(v);
   }
-  clauses.push_back(newClause);
+  clauses.push_back(new_clause);
 }
 
 
-void parse_DIMACS_main(StreamBuffer &in, vector<vector<int> > &clauses) {
+void parse_DIMACS_main(StreamBuffer &in, vector<clause *> &clauses) {
   while (true) {
     skipWhitespace(in);
     if (*in == EOF) break;
@@ -92,14 +96,14 @@ void parse_DIMACS_main(StreamBuffer &in, vector<vector<int> > &clauses) {
 }
 
 
-void parse_DIMACS(gzFile input_stream, vector<vector<int> > &clauses)
+void parse_DIMACS(gzFile input_stream, vector<clause *> &clauses)
 {
   StreamBuffer in(input_stream);
   parse_DIMACS_main(in, clauses);
 }
 
 
-void parse_DIMACS_CNF(vector<vector<int> > &clauses,
+void parse_DIMACS_CNF(vector<clause *> &clauses,
 		      int &maxVarIndex,
 		      const char *DIMACS_cnf_file) {
   unsigned int i, j;
@@ -115,8 +119,8 @@ void parse_DIMACS_CNF(vector<vector<int> > &clauses,
 
   maxVarIndex = 0;
   for (i = 0; i < clauses.size(); ++i)
-    for (j = 0; j < clauses[i].size(); ++j) {
-      candidate = abs(clauses[i][j]);
+    for (j = 0; j < clauses[i]->vars.size(); ++j) {
+      candidate = abs(clauses[i]->vars[j].index);
       if (candidate > maxVarIndex) maxVarIndex = candidate;
     }
 }

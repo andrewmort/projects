@@ -30,7 +30,7 @@ obj/%.o: src/%.cpp $(INC)
 
 
 run: $(EXENAME)
-	@$(EXENAME) tests/smallBenchmarks/SAT/sanity/sanity2.cnf
+	bin/test.sh $(EXENAME) tests/smallBenchmarks/SAT/sanity/
 
 .PHONY: clean run
 

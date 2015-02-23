@@ -40,23 +40,24 @@ int main(int argc, char **argv) {
 	// ------------------------------------------------------------
 	// END Options/command line parsing
 	// ------------------------------------------------------------	
-    vector<vector<int> > clauses;
+    vector<clause *> clauses;
     int maxVarIndex;
 
     parse_DIMACS_CNF(clauses, maxVarIndex, filename);
 
     printf("maxVarIndex: %d\n", maxVarIndex);
     
-    for(int i = 0; i < (int) clauses.size(); i++) {
-        vector<int> t = clauses[i];
+    for(unsigned int i = 0; i < clauses.size(); i++) {
+        clause *c = clauses[i];
         printf("i = %d\n", i);
 
-        for(int j = 0; j < (int) t.size(); j++) {
-            printf("\tj = %d: %d\n", j, t[j]);
+        for(unsigned int j = 0; j < c->vars.size(); j++) {
+            printf("\tj = %d: %d @ %d\n", j, c->vars[j].index, 
+                c->vars[j].value);
         }
     }
 
-    printf("\nsolve: %d\n", (int) solve(clauses));
+    printf("\nsolve: %d\n", solve(clauses));
 
     return 0;
 }
