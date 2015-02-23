@@ -1,6 +1,7 @@
-#include <cstdio>
-int main() {
-    printf("Hi\n");
+#include "sat.h"
 
-    return 1;
+bool solve(vector<vector<int> > &clauses){
+    return true;
 }
+
+

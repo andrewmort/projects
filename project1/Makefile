@@ -17,7 +17,8 @@ CPP = g++ -m32
 FLAGS= -Wno-deprecated -Wno-write-strings -Wall -Wold-style-cast \
 -Wformat=2 -ansi -pedantic -O3 -I include
 
-all: $(EXENAME)
+all: run
+#all: $(EXENAME)
 
 # Compile main program by linking all object files (depends on object files)
 $(EXENAME): $(OBJ) 
@@ -28,7 +29,10 @@ obj/%.o: src/%.cpp $(INC)
 	@$(CPP) $(FLAGS) -c $< -o $@
 
 
-.PHONY: clean
+run: $(EXENAME)
+	@$(EXENAME) tests/smallBenchmarks/SAT/sanity/sanity2.cnf
+
+.PHONY: clean run
 
 clean:
 	@rm -rf $(OBJ) $(EXENAME)
