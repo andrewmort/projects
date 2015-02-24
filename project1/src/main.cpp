@@ -18,6 +18,9 @@ void usage(char **argv) {
 int main(int argc, char **argv) {
 	char *filename ;
 	char c ;
+    vector<clause *> clauses;
+    int maxVarIndex;
+    bool ret;
 
 	// ------------------------------------------------------------
 	// Options/command line parsing
@@ -40,13 +43,12 @@ int main(int argc, char **argv) {
 	// ------------------------------------------------------------
 	// END Options/command line parsing
 	// ------------------------------------------------------------	
-    vector<clause *> clauses;
-    int maxVarIndex;
 
     parse_DIMACS_CNF(clauses, maxVarIndex, filename);
 
+#ifdef DEBUG
     printf("maxVarIndex: %d\n", maxVarIndex);
-    
+
     for(unsigned int i = 0; i < clauses.size(); i++) {
         clause *c = clauses[i];
         printf("i = %d\n", i);
@@ -56,8 +58,32 @@ int main(int argc, char **argv) {
                 c->vars[j].value);
         }
     }
+    printf("\n");
+#endif
 
-    printf("\nsolve: %d\n", solve(clauses));
+    ret = solve(clauses);
+
+#ifdef DEBUG
+    for(unsigned int i = 0; i < clauses.size(); i++) {
+        clause *c = clauses[i];
+        printf("i = %d\n", i);
+
+        for(unsigned int j = 0; j < c->vars.size(); j++) {
+            printf("\tj = %d: %d @ %d\n", j, c->vars[j].index, 
+                c->vars[j].value);
+        }
+    }
+#endif
+
+    // Print solution line
+    if (ret) {
+        printf("s SATISFIABLE\n");
+        print_solution();
+    } else {
+        printf("s UNSATISFIABLE\n");
+    }
+
+    free_vars(clauses);
 
     return 0;
 }

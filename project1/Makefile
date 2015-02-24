@@ -7,6 +7,11 @@ INC = $(wildcard include/*.h)
 # Get all object files (use SRC and replace src/%.cpp with obj/%.o)
 OBJ = $(patsubst src/%.cpp, obj/%.o, $(SRC))
 
+# Set tests
+TEST = tests/smallBenchmarks/SAT/sanity/*3*
+#TEST = tests/smallBenchmarks/SAT/tiny/rand30_50.cnf
+#TEST = tests/smallBenchmarks
+
 # Set output name
 EXENAME = bin/760sat
 
@@ -15,7 +20,7 @@ CPP = g++ -m32
 
 # Optimizing flags
 FLAGS= -Wno-deprecated -Wno-write-strings -Wall -Wold-style-cast \
--Wformat=2 -ansi -pedantic -O3 -I include
+-Wformat=2 -ansi -pedantic -O3 -I include 
 
 all: run
 #all: $(EXENAME)
@@ -25,12 +30,12 @@ $(EXENAME): $(OBJ)
 	@$(CPP) $(FLAGS) $^ -lz -o $@ 
 
 # Compile each source file into an object file (depends on cpp file and h files)
-obj/%.o: src/%.cpp $(INC)
+obj/%.o: src/%.cpp $(INC) Makefile
 	@$(CPP) $(FLAGS) -c $< -o $@
 
 
 run: $(EXENAME)
-	bin/test.sh $(EXENAME) tests/smallBenchmarks/SAT/sanity/
+	bin/test.sh $(EXENAME) $(TEST)
 
 .PHONY: clean run
 

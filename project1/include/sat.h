@@ -23,4 +23,7 @@ typedef struct clause {
 
 bool solve(vector<clause *> &clauses);
 
+void print_solution();
+void free_vars(vector<clause *> &clauses);
+
 #endif
