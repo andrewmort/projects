@@ -1,0 +1,14 @@
+Project 1 Milestone
+
+Andrew Mort (amort)
+Chad Cole (cjcole)
+
+The code can be compiled and executed by running "make".
+
+The code is currently based around the brain-dead algorithm described in the
+project 1 overview by Brian Taylor. It works well on the small sanity tests
+but it has some issues with several of the larger small tests. The 
+output of the test is currently printed on the command line but will
+eventually be placed in a file as described in the output format file.
+
+
