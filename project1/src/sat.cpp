@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "stdint.h"
+#include <set>
 
 #define SAT     -32767
 #define UNSAT   0
@@ -16,15 +17,25 @@ typedef struct assign_var {
 // Contains all all assigned variables
 vector <assign_var *> assigned_list;
 
+// Set of variables unused
+set<int> unused_vars;
+
 int assign(vector<clause *> &clauses, int index, int value);
 void unassign(vector<clause *> &clauses, int index, int value);
 bool dpll(vector<clause *> &clauses, int index, int value);
 
 // Solve the satisfiability problem
-bool solve(vector<clause *> &clauses){
+bool solve(vector<clause *> &clauses, int max_var){
+    // Create set of unused variables
+    for(int i = 1; i <= max_var; i++) {
+        unused_vars.insert(i);
+    }
+
+    // Call dpll 
     if (dpll(clauses, 1, TRUE)) {
         return true;
     } else {
+        unassign(clauses,  1, TRUE);
         return dpll(clauses, 1, FALSE);
     }
 }
@@ -46,7 +57,6 @@ void print_solution() {
     }
 
     printf(" 0\n");
-    printf(" done\n");
 }
 
 // Free all allocated variables
@@ -83,6 +93,9 @@ int assign(vector<clause *> &clauses, int index, int value) {
     printf("\nAssign %d to %d\n", index, value);
 #endif
 
+    // Try to remove the current variable from the list of unused vars
+    unused_vars.erase(abs(index));
+
     // Create new assign var and add to assigned list
     assigned = new assign_var();
     assigned_list.push_back(assigned);
@@ -112,18 +125,15 @@ int assign(vector<clause *> &clauses, int index, int value) {
 
                 // Add clause variable to assigned ptr list
                 assigned->ptrs.push_back(&(clauses[i]->vars[j]));
-
 #ifdef DEBUG
                 printf(", assign %d", value);
 #endif
-
             } else if (clauses[i]->vars[j].index == -index) {
                 // Assign complemented value
                 clauses[i]->vars[j].value = 1 - value;
 
                 // Add clause variable to assigned ptr list
                 assigned->ptrs.push_back(&(clauses[i]->vars[j]));
-                
 #ifdef DEBUG
                 printf(", assign %d", 1 - value);
 #endif
@@ -133,8 +143,6 @@ int assign(vector<clause *> &clauses, int index, int value) {
             if (clauses[i]->vars[j].value == TRUE) {
                 // Clause is sat if variable is true
                 sat_count++;
-                unit = 0;
-
 #ifdef DEBUG
                 printf(", sat\n");
 #endif
@@ -145,7 +153,6 @@ int assign(vector<clause *> &clauses, int index, int value) {
             } else if (clauses[i]->vars[j].value == FALSE ) {
                 // Increment unsat count if value is false
                 unsat_count++;
-
 #ifdef DEBUG
                 printf(", unsat count: %d", unsat_count);
 #endif
@@ -160,7 +167,6 @@ int assign(vector<clause *> &clauses, int index, int value) {
 
                         // Don't set unit decided yet since we may find another
                         // unassigned variable in clause
-
 #ifdef DEBUG
                         printf(", unit: %d", unit);
 #endif
@@ -170,7 +176,6 @@ int assign(vector<clause *> &clauses, int index, int value) {
                         
                         // Reset unit to 0 to indicate there is no unit found
                         unit = 0;
-
 #ifdef DEBUG
                         printf(", not unit: %d", unit);
 #endif
@@ -191,11 +196,15 @@ int assign(vector<clause *> &clauses, int index, int value) {
         }
 
         // The current clause is unit so set is_unit to prevent changing unit
-        if (unit) {
+        if (unit != 0 && !unit_decided) {
 #ifdef DEBUG
             printf("\t unit = true\n");
 #endif
             unit_decided = true;
+        } else if (unit_decided && unit == 0) {
+            // Reset unit and unit_decided variables
+            unit_decided = false;
+            unit = 0;
         }
     }
 
@@ -205,7 +214,7 @@ int assign(vector<clause *> &clauses, int index, int value) {
     }
 
     // If we have a unit clause, return the variable that should be set
-    if (unit && unit_decided) {
+    if (unit != 0 && unit_decided) {
         return unit;
     }
 
@@ -215,27 +224,40 @@ int assign(vector<clause *> &clauses, int index, int value) {
 // Unassign the last assigned variable
 void unassign(vector<clause *> &clauses, int index, int value) {
     assign_var *assigned;
+    int cur_idx, cur_val;
 
-    // Get last assignment
-    assigned = assigned_list.back();
-
-    // Ensure that we are suppose to unassigning the last assignment
-    if (assigned->var.index != index || assigned->var.value != value) {
 #ifdef DEBUG
-        printf("Unassign return early\n");
+    printf("Call unassign: %d @ %d\n", index, value);
+
+    print_solution();
 #endif
-        return;
-    }
 
-    assigned_list.pop_back();
 
-    // Reassign all values to UNASSIGNED
-    for(unsigned int i = 0; i < assigned->ptrs.size(); i++) {
-        assigned->ptrs[i]->value = UNASSIGNED;
-    }
+    do {
+        // Get last assignment and pop from list
+        assigned = assigned_list.back();
+        assigned_list.pop_back();
 
-    // Delete allocated struct
-    delete assigned;
+        // Get index and value
+        cur_idx = assigned->var.index;
+        cur_val = assigned->var.value;
+
+#ifdef DEBUG
+        printf("\tUnassign: %d @ %d\n", cur_idx, cur_val);
+#endif
+
+        // Reassign all values to UNASSIGNED
+        for(unsigned int i = 0; i < assigned->ptrs.size(); i++) {
+            assigned->ptrs[i]->value = UNASSIGNED;
+        }
+
+        // Delete allocated struct
+        delete assigned;
+
+        // Add variable back to unused vars
+        unused_vars.insert(cur_idx);
+
+    } while(cur_idx != index || cur_val != value);
 }
 
 bool dpll(vector<clause *> &clauses, int index, int value) {
@@ -270,18 +292,41 @@ bool dpll(vector<clause *> &clauses, int index, int value) {
         return false;
 
     } else if (ret == NONE) {
-        index = (abs(index) + 1);
+
+        if(unused_vars.empty()) {
+            printf("Unused Vars Empty!\n");
+            return false;
+        }
+
+        index = *(unused_vars.begin());
+#ifdef DEBUG
+        printf("** Get index: %d\n", index);
+#endif
 
         // Nothing new happened, so choose new variable
         if (dpll(clauses, index, TRUE)) {
             // DPLL with new variable returns SAT, so return true
             return true;
+        } 
+#ifdef DEBUG
+        printf("** Index %d @ %d Failed\n", index, 1);
+#endif
+        
+        // Undo dpll assignment with new index
+        unassign(clauses, index, TRUE);
 
-        } else {
-            // Undo dpll assignment with index++ at true and try false
-            unassign(clauses, index, TRUE);
-            return dpll(clauses, index, FALSE);
-        }
+        // Try dpll with index at false
+        if (dpll(clauses, index, FALSE)) {
+            return true;
+        } 
+
+#ifdef DEBUG
+        printf("** Index %d @ %d Failed\n", index, 0);
+#endif
+
+        // Undo assignment since it failed
+        unassign(clauses, index, FALSE);
+        return false;
     } else {
         // Returned a variable, so we have a unit clause
         return dpll(clauses, ret, TRUE);

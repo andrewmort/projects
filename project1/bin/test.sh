@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for i in `find $2 -name "*.cnf"`; do
+for i in `find $2 -name "*.cnf" -name "*sanity*"`; do
     echo
     echo "$i:"
     echo

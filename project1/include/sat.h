@@ -21,7 +21,7 @@ typedef struct clause {
     vector<variable> vars;
 } clause;
 
-bool solve(vector<clause *> &clauses);
+bool solve(vector<clause *> &clauses, int max_var);
 
 void print_solution();
 void free_vars(vector<clause *> &clauses);

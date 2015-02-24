@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
     printf("\n");
 #endif
 
-    ret = solve(clauses);
+    ret = solve(clauses, maxVarIndex);
 
 #ifdef DEBUG
     for(unsigned int i = 0; i < clauses.size(); i++) {

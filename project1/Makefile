@@ -8,19 +8,28 @@ INC = $(wildcard include/*.h)
 OBJ = $(patsubst src/%.cpp, obj/%.o, $(SRC))
 
 # Set tests
-TEST = tests/smallBenchmarks/SAT/sanity/*3*
+TEST = tests/smallBenchmarks/
+#TEST = tests/smallBenchmarks/SAT/sanity/*3*
 #TEST = tests/smallBenchmarks/SAT/tiny/rand30_50.cnf
-#TEST = tests/smallBenchmarks
+#TEST = tests/smallBenchmarks/SAT/tiny/rand10_10.cnf
+#TEST = tests/smallBenchmarks/SAT/tiny/rand25_40.cnf
+#TEST = tests/smallBenchmarks/SAT/tiny/rand5_10.cnf
+#TEST = tests/smallBenchmarks/SAT/tiny/rand10_20.cnf
 
 # Set output name
 EXENAME = bin/760sat
+
+# Set debug variable
+#DEBUG =
+#DEBUG = -D DEBUG
+
 
 # Set compiler
 CPP = g++ -m32
 
 # Optimizing flags
 FLAGS= -Wno-deprecated -Wno-write-strings -Wall -Wold-style-cast \
--Wformat=2 -ansi -pedantic -O3 -I include 
+-Wformat=2 -ansi -pedantic -O3 -I include $(DEBUG)
 
 all: run
 #all: $(EXENAME)
