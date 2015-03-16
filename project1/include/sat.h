@@ -6,24 +6,12 @@
 using namespace std;
 
 #define TRUE 1
-#define FALSE 0
-#define UNASSIGNED -1
+#define FALSE -1
+#define UNASSIGNED 0
 
 
-// Variable has index (or name) and value
-typedef struct variable {
-    int index;
-    int value;
-} variable;
-
-// A clause contains a list of variables
-typedef struct clause {
-    vector<variable> vars;
-} clause;
-
-bool solve(vector<clause *> &clauses, int max_var);
+bool DPLL(vector<vector<int> > *clauses, int max_var);
 
 void print_solution();
-void free_vars(vector<clause *> &clauses);
 
 #endif
