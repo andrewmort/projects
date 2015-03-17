@@ -13,11 +13,14 @@ typedef struct watch_list_t {
 // Vector of variable assignemnts (initially set to 0 = UNASSIGNED)
 vector<int> variable_assignment;
 
-// Vector of variables that are assigned
+// Vector of antecedents (pointer to clause that went unit to imply variable)
+vector<vector<int> *> variable_antecedent;
+
+// Vector of variables in order they are assigned
 vector<int> assigned_variables;
 
-// Vector of pointers to the first variable assigned in that level
-vector<int *> level_assignment;
+// Vector of indexes to the first variable assigned in that level
+vector<unsigned int> level_assignment;
 
 // Watched variable list
 vector<watch_list_t> watch_list;
@@ -25,22 +28,30 @@ vector<watch_list_t> watch_list;
 // Pointer to clauses
 vector<vector<int> > *clauses;
 
+// Current Level
+unsigned int level = 0;
+
 // Function Prototypes
 vector<int> *assign_variable(int var);
 int backtrack(vector<int> *conflicting_clause);
 int next_assignment();
+bool check_clause(vector<int> *, unsigned int , int *, unsigned int *);
+void resolve(vector<int> *clause, vector<int> *antecedent, int recent_var);
 
 bool DPLL(vector<vector<int> > *clauses_local, int max_var) {
-    int level = 0;
     int var = 0;
     vector<int> *conflicting_clause;
+
+    // Push initial value 0 so we have something to point to initially
+    assigned_variables.push_back(0);
 
     // Assign global variable to clauses to simplify function calls
     clauses = clauses_local;
 
     // Size watch list and variable assignment vectors to hold all vars
     watch_list.resize(max_var + 1);
-    variable_assignment.resize(max_var + 1);
+    variable_assignment.resize(max_var + 1, UNASSIGNED);
+    variable_antecedent.resize(max_var + 1, NULL);
 
     while (true) {
         // Perform unit propagation with the new assignment var = val
@@ -48,13 +59,11 @@ bool DPLL(vector<vector<int> > *clauses_local, int max_var) {
 
         // When we have a conflict, conflicting clause will not be NULL
         if (conflicting_clause != NULL) {
-            /*
             if (level == 0) {
                 return false;
             }
 
-            level = backtrack(conflicting_clause);
-            */
+            var = backtrack(conflicting_clause);
             printf("Conflict\n");
         } else {
             // Get next variable assignment
@@ -67,6 +76,14 @@ bool DPLL(vector<vector<int> > *clauses_local, int max_var) {
 
             // Increment level
             level++;
+
+            // Ensure there currently as many elements as levels
+            if (level_assignment.size() != level) {
+                level_assignment.resize(level);
+            }
+
+            // Add pointer to last assigned variable to level assignment vector
+            level_assignment.push_back(assigned_variables.size() - 1);
         }
     }
 }
@@ -108,10 +125,10 @@ vector<int> *assign_variable(int var) {
 
                 // Push pointer to clause to end of watch list for that var
                 if (var > 0) {
-                    // Add to neg watch list when variable is not inverted
+                    // Add to pos watch list when variable is not inverted
                     watch_list[var].pos.insert(clause);
                 } else {
-                    // Add to pos watch list when variable is inverted
+                    // Add to neg watch list when variable is inverted
                     watch_list[-var].neg.insert(clause);
                 }
             }
@@ -220,6 +237,9 @@ vector<int> *assign_variable(int var) {
 
                 //printf("Unit: %d\n", new_var);
 
+                // Add clause causing variable to go unit as antecedent
+                variable_antecedent[abs(new_var)] = clause;
+
                 // Continue to next clause
                 continue;
             } 
@@ -248,23 +268,150 @@ vector<int> *assign_variable(int var) {
  * Find the conflict clause using 1UIP and backtrack to the level determined
  * by the algorithm.
  *
- * Return:  level to backtrack 
+ * Return:  Variable to assign
  *
  * Note: Should unassign all assigned variables that disappear due to backtrack
  */
 int backtrack(vector<int> *conflicting_clause) {
-    /*
-    while(conflicting_clause has more than one literal from current level) {
-        p = variable in C most recently assigned
-        C = Resolve(C, antecedent(p), p);
+    vector<int> clause;
+    vector<int> *ptr;
+    int most_recent; 
+    unsigned int next_most_recent_idx, i;
+    int ret;
+
+    // Copy conflicting clause into clause vector
+    for (i = 0; i < conflicting_clause->size(); i++) {
+        clause.push_back(conflicting_clause->at(i));
+    }
+    
+    while (check_clause(&clause, level, &most_recent, &next_most_recent_idx)) {
+        resolve(&clause, variable_antecedent[most_recent], most_recent);
     }
 
-    add C to clause list
-    l = max level in C - {p} 
-    Unassigned assignments made at decision levels (l + 1) but not at l
-    */
 
-    return 0;
+    // Find the level containing the next most recent variable assignement
+    for (i = level; i > 0; i--) {
+        if (next_most_recent_idx > level_assignment[i]) {
+            level = i;
+        }
+    }
+
+    // Get variable assignment for level
+    ret = assigned_variables[level_assignment[level] + 1];
+
+    // Set ret to opposite polarity of initial variable value
+    ret = variable_assignment[ret] == FALSE ? ret : -ret;
+
+    // Unassign all variables before current level
+    for (i = assigned_variables.size() - 1; i > level_assignment[level]; i--){
+        variable_assignment[i] = UNASSIGNED;
+        assigned_variables.pop_back();
+    }
+
+    // Push conflict clause to back of clauses and get pointer to it
+    clauses->push_back(clause);
+    ptr = &(clauses->back());
+
+    // Update watched list
+    unsigned int w;
+    for (i = 0, w = 2; i < ptr->size() - w && w > 0; i++) {
+        // When variable is unassigned, add it to watched list
+        if (variable_assignment[abs(ptr->at(i))] == UNASSIGNED) {
+            if (ptr->at(i) > 0) {
+                // Add to pos watch list when variable is not inverted
+                watch_list[ptr->at(i)].pos.insert(ptr);
+            } else {
+                // Add to neg watch list when variable is inverted
+                watch_list[-ptr->at(i)].neg.insert(ptr);
+            }
+
+            // We need one less watched variable now
+            w--;
+        }
+    }
+
+    // Set remaining values in clause as watched variables if we need more
+    for(; i < ptr->size() && w > 0; i++, w--) {
+        if (ptr->at(i) > 0) {
+            // Add to pos watch list when variable is not inverted
+            watch_list[ptr->at(i)].pos.insert(ptr);
+        } else {
+            // Add to neg watch list when variable is inverted
+            watch_list[-ptr->at(i)].neg.insert(ptr);
+        }
+    }
+
+    return ret;
+}
+
+/*
+ * Return true if the clause contains more than one variable at the current
+ * level and sets recent_var to the most recently assigned variable from the
+ * clause.
+ */
+bool check_clause(vector<int> *clause, unsigned int level, int *most_recent,
+        unsigned int *next_most_recent_idx) {
+
+    unsigned int largest_idx = 0;
+    unsigned int next_largest_idx = 0;
+
+    // Look for most recently assigned variable from clause
+    for(unsigned int i = 0; i < clause->size(); i++) {
+        int var;
+        
+        // Get current variable
+        var = abs(clause->at(i));
+
+        // Take variable from clause and find location in assigned_variables
+        for(unsigned int j = assigned_variables.size() - 1; j >= 0; j--) {
+
+            // Update indexes when j is larger than saved indexes
+            if (var == assigned_variables[j]) {
+                if (j > largest_idx) {
+                    next_largest_idx = largest_idx;
+                    largest_idx = j;
+                } else if (j > next_largest_idx) {
+                    next_largest_idx = j;
+                }
+            }
+        }
+    }
+
+    // Set variables with most recent var and idx of next most recent var
+    *most_recent = assigned_variables[largest_idx];
+    *next_most_recent_idx = next_largest_idx;
+
+    // Return true when most recently assigned variable is in current level
+    if (largest_idx > level_assignment[level]) {
+        return true;
+    }
+
+    return false;
+}
+
+/*
+ * Set clause to the resolvent determined by clause, antecedent, and the
+ * variable recent_var.
+ */
+void resolve(vector<int> *clause, vector<int> *antecedent, int recent_var) {
+
+    for (unsigned int i = 0; i < clause->size(); i++) {
+        if (abs(clause->at(i)) == recent_var) {
+            clause->at(i) = clause->back();
+            clause->pop_back();
+
+            break;
+        }
+    }
+
+    //TODO may need to remove duplicate
+    for(unsigned int i = 0; i < antecedent->size(); i++) {
+        if (abs(clause->at(i)) == recent_var) {
+            continue;
+        }
+
+        clause->push_back(antecedent->at(i));
+    }
 }
 
 /*

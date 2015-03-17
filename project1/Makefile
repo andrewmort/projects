@@ -9,7 +9,7 @@ OBJ = $(patsubst src/%.cpp, obj/%.o, $(SRC))
 
 # Set tests
 #TEST = tests/smallBenchmarks/
-TEST = tests/smallBenchmarks/SAT
+TEST = tests/smallBenchmarks/UNSAT
 
 # Set output name
 EXENAME = bin/760sat
