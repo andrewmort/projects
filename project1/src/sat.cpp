@@ -63,24 +63,12 @@ bool DPLL(vector<vector<int> > *clauses_local, int max_var) {
     // We haven't set watched variabels yet
     watched_vars_set = false;
 
-    //int count = 0;
-
     while (true) {
-        /*
-        if(count++ > 10) {
-            return false;
-        }
-        */
-
-
         // Perform unit propagation with the new assignment var = val
         conflicting_clause = assign_variable(var);
 
         // When we have a conflict, conflicting clause will not be NULL
         if (conflicting_clause != -1) {
-#ifdef DEBUG
-            printf("Conflict\n");
-#endif
             if (level == 0) {
                 return false;
             }
@@ -107,10 +95,6 @@ bool DPLL(vector<vector<int> > *clauses_local, int max_var) {
             // Add pointer to last assigned variable to level assignment vector
             level_assignment.push_back(assigned_variables.size() - 1);
             level_backtrack.push_back(0);
-
-#ifdef DEBUG
-            printf("level %d\n", level);
-#endif
         }
     }
 }
@@ -120,8 +104,8 @@ bool DPLL(vector<vector<int> > *clauses_local, int max_var) {
  * the variable abs(var) will be set to 0). Once the variable is assigned,
  * 2-literal watching will be used to find any unit clauses. The routine
  * will continue assigning variables until no more unit clauses exist.
- * When a conflict occurs, a pointer to the conflict clause will be returned.
- * Otherwise, the function will return NULL. If the fucntion is called with
+ * When a conflict occurs, the indexto the conflict clause will be returned.
+ * Otherwise, the function will return -1. If the fucntion is called with
  * var = 0, the 2-literal watch list will be generated using the first two
  * variables of each clause.
  *
@@ -130,10 +114,6 @@ bool DPLL(vector<vector<int> > *clauses_local, int max_var) {
 int assign_variable(int var) {
     queue<int> assignment_queue;
     queue<int> antecedent_queue;
-
-#ifdef DEBUG
-    printf("Assign %d\n", var);
-#endif
 
     // If var is 0, this is first call to unit_propagation
     if (var == 0) {
@@ -189,10 +169,6 @@ int assign_variable(int var) {
             wlist = &(watch_list[-var].pos);
         }
 
-#ifdef DEBUG
-        printf("Assignment Queue: %d\n", var);
-#endif
-
         // When variable is already set to value, we don't need to do anything
         if(variable_assignment[abs(var)] == val) {
             continue;
@@ -200,11 +176,6 @@ int assign_variable(int var) {
 
         // When variable is already set, we have a conflict
         if(variable_assignment[abs(var)] != UNASSIGNED) {
-            // TODO should never see this.
-#ifdef DEBUG
-            printf("Var already set: %d\n", variable_assignment[abs(var)]);
-#endif
-
             // Return antecedent since this is conflicting clause
             val = antecedent_queue.front();
             antecedent_queue.pop();
@@ -219,11 +190,6 @@ int assign_variable(int var) {
         // Assign variable and place it in the assigned variable list
         variable_assignment[abs(var)] = val;
         assigned_variables.push_back(abs(var));
-
-
-#ifdef DEBUG
-        printf("Assign Var: %d\n", var);
-#endif
 
         set<int>::iterator it, next_it;
 
@@ -294,9 +260,6 @@ int assign_variable(int var) {
 
             // Stop every if there is a conflict and return clause
             if (clause_conflict) {
-#ifdef DEBUG
-                printf("return conflict clause %d\n", idx);
-#endif
                 return idx;
             }
 
@@ -304,18 +267,6 @@ int assign_variable(int var) {
                 // Add variable to assignemnt queue
                 assignment_queue.push(new_var);
                 antecedent_queue.push(idx);
-
-                
-#ifdef DEBUG
-                printf("Unit: %d\n", new_var);
-                printf("Antecedent %d: ", idx);
-
-                for(unsigned int a = 0; a < clauses->at(idx).size(); a++) {
-                    printf("%d ", clauses->at(idx).at(a));
-                }
-                printf("\n");
-#endif
-               
 
                 // Continue to next clause
                 continue;
@@ -345,37 +296,12 @@ int assign_variable(int var) {
  * by the algorithm.
  *
  * Return:  Variable to assign
- *
- * Note: Should unassign all assigned variables that disappear due to backtrack
  */
 int backtrack(int conflicting_clause) {
     vector<int> clause;
     int idx;
     unsigned int most_recent_idx, next_most_recent_idx, i;
     int ret;
-
-    
-#ifdef DEBUG
-    printf("Assigned Vars: \n");
-    for (i = 0; i < level_assignment.size(); i++) {
-        printf("\tLevel %d: ", i);
-
-        unsigned int j;
-        for (j = level_assignment[i]; j < assigned_variables.size(); j++) {
-            if (i < level_assignment.size() - 1) {
-                if (j >= level_assignment[i + 1]) {
-                    break;
-                }
-            }
-
-            printf(" (%u: %d)", j, assigned_variables[j]);
-        }
-        printf("\n");
-    }
-
-    printf("Conflicting Clause %d\n", conflicting_clause);
-#endif
-    
 
     // Copy conflicting clause into clause vector
     for (i = 0; i < clauses->at(conflicting_clause).size(); i++) {
@@ -462,15 +388,9 @@ int backtrack(int conflicting_clause) {
             if (ptr->at(i) > 0) {
                 // Add to pos watch list when variable is not inverted
                 watch_list[ptr->at(i)].pos.insert(idx);
-#ifdef DEBUG
-                printf("Watch list 1 pos %d\n", ptr->at(i));
-#endif
             } else {
                 // Add to neg watch list when variable is inverted
                 watch_list[-ptr->at(i)].neg.insert(idx);
-#ifdef DEBUG
-                printf("Watch list 1 neg %d\n", -ptr->at(i));
-#endif
             }
 
             // We need one less watched variable now
@@ -483,30 +403,21 @@ int backtrack(int conflicting_clause) {
         if (ptr->at(i) > 0) {
             // Add to pos watch list when variable is not inverted
             watch_list[ptr->at(i)].pos.insert(idx);
-#ifdef DEBUG
-            printf("Watch list 2 pos %d\n", -ptr->at(i));
-#endif
         } else {
             // Add to neg watch list when variable is inverted
             watch_list[-ptr->at(i)].neg.insert(idx);
-#ifdef DEBUG
-            printf("Watch list 2 neg %d\n", -ptr->at(i));
-#endif
         }
     }
-
-#ifdef DEBUG
-    printf("Backtrack ret: %d\n", ret);
-#endif
 
     return ret;
 
 }
 
 /*
- * Return true if the clause contains more than one variable at the current
- * level and sets recent_var to the most recently assigned variable from the
- * clause.
+ * Return true if the clause contains more than two variables at the current
+ * level. Sets most_recent_idx to the index of the most recently assigned
+ * variable from the clause and next_most_recent_idx to the index of the
+ * next most recently assigned variable.
  */
 bool check_clause(vector<int> *clause, unsigned int *most_recent_idx,
         unsigned int *next_most_recent_idx) {
@@ -536,28 +447,15 @@ bool check_clause(vector<int> *clause, unsigned int *most_recent_idx,
         }
     }
 
-    
-#ifdef DEBUG
-    printf("Check Clause: Level %u, level_idx %u, largest_idx %u, next_largest_idx %u\n",
-        level, level_assignment[level], largest_idx, next_largest_idx);
-#endif
-    
-
     // Set variables with most recent var and idx of next most recent var
     *most_recent_idx = largest_idx;
     *next_most_recent_idx = next_largest_idx;
 
     // Return true when next most recently assigned variable is in current level
     if (next_largest_idx > level_assignment[level]) {
-#ifdef DEBUG
-        printf("ret true\n");
-#endif
         return true;
     }
 
-#ifdef DEBUG
-    printf("ret false\n");
-#endif
     return false;
 }
 
@@ -567,19 +465,6 @@ bool check_clause(vector<int> *clause, unsigned int *most_recent_idx,
  */
 void resolve(vector<int> *clause, int antecedent, int recent_var) {
     set<int> clause_vars;
-
-#ifdef DEBUG
-    printf("Resolve clause: ");
-    for(unsigned int i = 0; i < clause->size(); i++) {
-        printf(" %d", clause->at(i));
-    }
-    printf("\nResolve antecedent: ");
-    for(unsigned int i = 0; i < clauses->at(antecedent).size(); i++) {
-        printf(" %d", clauses->at(antecedent).at(i));
-    }
-    printf("\nResolve var: %d\n", recent_var);
-#endif
-
 
     for (unsigned int i = 0; i < clause->size(); i++) {
         if (abs(clause->at(i)) == recent_var) {
@@ -625,14 +510,6 @@ void resolve(vector<int> *clause, int antecedent, int recent_var) {
         clause->push_back(clauses->at(antecedent).at(i));
         clause_vars.insert(clauses->at(antecedent).at(i));
     }
-
-#ifdef DEBUG
-    printf("Resolve: ");
-    for(unsigned int i = 0; i < clause->size(); i++) {
-        printf(" %d", clause->at(i));
-    }
-    printf("\n");
-#endif
 }
 
 /*
@@ -643,50 +520,25 @@ int next_assignment() {
     unsigned int idx, size;
     int ret;
 
-#ifdef DEBUG
-    printf("Unassigned Vars: ");
-    for (unsigned int i = 1; i < variable_assignment.size(); i++) {
-        if(variable_assignment[i] == UNASSIGNED) {
-            printf(" %u", i);
-        }
-    }
-    printf("\n");
-#endif
-
-
+    // Find size and random index
     size = variable_assignment.size() - 1;
     idx = rand() % (size);
 
+    // Go through rest of list
     for (unsigned int i = 0; i < size; i++) {
         ret = static_cast<int>((i + idx) % size + 1);
-#ifdef DEBUG
-        printf("Try %d\n", ret);
-#endif
 
+        // Find first unassigned variable
         if (variable_assignment[ret] == UNASSIGNED) {
             if (rand() % 2) {
                 ret = -ret;
             }
-
-#ifdef DEBUG
-            printf("Choose %d\n", ret);
-#endif
 
             return ret;
         }
     }
 
     return 0;
-
-    /*
-    for (unsigned int i = 1; i < variable_assignment.size(); i++) {
-        if (variable_assignment[i] == UNASSIGNED) {
-            return i;
-        }
-    }
-
-    return 0;
-    */
 }
 
 void print_solution() {
