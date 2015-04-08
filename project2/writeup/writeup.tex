@@ -1,0 +1,195 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Electrical Engineering Assignment Template
+% Chad Cole
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+\documentclass[9pt]{extarticle}
+\input{/usr/local/texlive/texmf-local/reportpreamble.tex}
+
+%----------------------------------------------------------------------------------------
+%	NAME AND CLASS SECTION
+%----------------------------------------------------------------------------------------
+
+\newcommand{\HRule}[1]{\rule{\linewidth}{#1}}
+
+\makeatletter
+\def\printtitle{\centering \@title\par}
+\makeatother
+
+\makeatletter
+\def\printauthor{\centering \large \@author}
+\makeatother
+
+
+%----------------------------------------------------------------------------------------
+%	TITLE PAGE
+%----------------------------------------------------------------------------------------
+
+\title{ \Large \textsc{18760: Project 1}
+\\[2.0cm]
+\HRule{0.5pt}\\
+\Huge\textbf{\uppercase{A Satisfiability Solver}}
+\HRule{2pt} \\[0.5cm]
+\Large \today
+}
+
+\author{
+    \Large
+    Andrew Mort (amort@andrew.cmu.edu)\\
+    Chad Cole (cjcole@cmu.edu)\\
+}
+
+\date{} % Insert date here if you want it to appear below your name
+
+%----------------------------------------------------------------------------------------
+
+\begin{document}
+
+\thispagestyle{empty}
+
+\printtitle
+\vfill
+\printauthor
+
+\clearpage
+\raggedright
+
+%----------------------------------------------------------------------------------------
+%	SECTION 1
+%----------------------------------------------------------------------------------------
+
+% To have just one problem per page, simply put a \clearpage after each problem
+
+\begin{homeworkProblem}[Introduction]
+
+    For this project, we were required to create an SAT solver that will read benchmarks in the DIMACS CNF format. Our solvers will be tested based on metrics of speed and range of tests that it can accommodate. As such, these were the factors that weighed most heavily on our minds during the concept phase of the project. Efficiency was the top goal in our project therefore this lead to the use of simple data structures with O(1) amortized runtime operations. To address the coolness
+    factor, we decided to implement three of the metrics discussed in class: (1) Two-literal Watching, (2) Clause Learning, and (3) Non-Chronological Backtracking.
+
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Idea]
+    \begin{enumerate}
+        \item[\textbf{a:}] \textbf{Two-literal Watching}
+            Two-literal Watching is a metric to reduce the amount of work performed by the solver. The usefulness of the technique becomes apparent when looking at large clauses. The set of literals is effectively reduced to two, and the solver needs to perform no work at all on the other literals. This is because the SAT solver now only cares about conflicts or unit clauses. If it finds a clause is satisfied it doesn't care - a satisfied clause doesn't need any more work. In other words, for Two-literal
+            Watching you have a clause with two or more variables. In the case where there are two or more unassigned variables, the watched variables must be unassigned. Therefore, if you assign one of these to 0, you must visit the clause and either move to another unassigned variable or find that the clause goes unit. Only then is it possible that some other unit clause could imply the final watched variable to 0, making the clause a conflict. 
+
+        \item[\textbf{b:}] \textbf{Clause Learning}
+            Clause learning takes advantage of work that was already done by the solver for conflict clauses found under previous implications. The learned clause is added to the end of the clause list and it causes a conflict more quickly so that you don't make the same decision and run into the same conflict again.  
+
+        \item[\textbf{c:}] \textbf{Non-Chronological Backtracking}
+            Non-Chronological Backtracking reduces the search space for the solver. Take for instance normal backtracking, where when a conflict is reached, the most recently made decision is reversed. The problem with this is that the most recent decision might not have caused the conflict. Non-Chronological Backtracking skips to the clause that caused the conflict saving work for the solver.
+    \end{enumerate}
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Implementation]
+    
+    \begin{enumerate}
+        \item[\textbf{a:}] \textbf{Two-literal Watching}
+            The clauses are represented as rows in a column vector. Each of these rows (clauses) is itself a vector 
+            of integers that represents the polarity of the variables. Two-literal watching is implemented using a 
+            vector sized to the total number of variables. Each entry in this vector is a tuple of sets that together 
+            contain the positive and the negative lists of clauses that are currently watching the positive or 
+            negative version of this variable respectively. Not every
+            instance of each variable is contained in these lists, only the watched variables from each clause. The 
+            watched list vector is indexed by the absolute value of each possible variable: i.e. 
+            $$ \texttt{watched\_list[i].pos} $$  will access the set of clauses that contain the watched variable $i$ 
+            in its positive polarity. Similarly for the negative polarity.\\
+
+            At the beginning of the program, the watch list is empty and the vector of assigned values is initialized 
+            to \texttt{UNASSIGNED}. The watch list is populated by calling the function {\tt assign} with the 
+            variable 0, since 0 is not a valid variable.  The clauses are then propagated and the first two literals 
+            in each clause are chosen as the watched variables. Any unit clauses are added to the assignment queue so 
+            that they can be assigned values from the beginning.\\
+
+            Now that the watch list is initialized and populated, we should move on to discussing how it is used. The 
+            solver uses a queue (\texttt{assignment\_queue}) to keep track of which variables to process next. These 
+            variables come either from a clause going unit or from a variable decision being made. For each variable 
+            in the assignment queue, the assignment is made and then the watch list for the opposite polarity of that 
+            variable is inspected. For each clause in the watch list, the program will choose a new watched variable 
+            that is currently unassigned, find a unit clause and add it to the assignment queue, or determine if the 
+            new assignment creates a conflict.\\
+
+            When a conflict occurs, the index of the conflicting clause is returned and operated on by the 
+            backtrack function which implements clause learning and the non-chronological backtracking. When a 
+            backtrack does occur, we don't have to change the watched literals which saves precious computation time. 
+            If there is no conflict and no more unit clauses remain, the assign function will return -1 to indicate 
+            that no faults have occurred and the program will make the next assignment until all variables are 
+            assigned.
+
+        \item[\textbf{b:}] \textbf{Clause Learning}
+            When a variable is assigned and it causes a conflict, the index to the clause that had the conflict is
+            returned. The program then knows that a conflict has occurred and calls the backtrack function with the
+            conflicting clause. The firstUIP algorithm is used to find the conflict clause which is then added to the
+            overall clause list.  The firstUIP algorithm starts by setting $C$ equal to the conflicting clause
+            and then finding the resolvent of $C$ and the antecedent of the most recently
+            assigned variable in $C$. The antecedent of a variable is the clause that caused that variable to 
+            become unit. The resolvent is found by combing $C$ and the antecedent of $C$ and removing both polarities
+            of the most recently assigned variable in $C$. The resolvent is then assigned to $C$ and the loop 
+            continues until there are no longer more than 2 variables in $C$ that were assigned in the current level.
+            The checking for the loop is performed by finding the two most recent variables in $C$ and ensuring that
+            the second most recently assigned variable was assigned in the current level. The resolvent is found
+            by looping through $C$ and removing the most recent variable by moving the back element in $C$ to take
+            its place. Once $C$ has been created without the most recent variable, all the variables from the
+            antecedent are copied into $C$ except for duplicates already in $C$ and the most recently assigned 
+            variable from $C$. In this way we can easily find the resolvent and the antecedent. The final value
+            of $C$ is the learned clause that gets added to main clause list. If there are any unassigned variables
+            in this clause after removing the assignments from backtracking, we labels these as watched variables.
+
+        \item[\textbf{c:}] \textbf{Non-Chronological Backtracking}
+        Non-Chronological backtracking is implemented using the learned clause $C$ from the clause learning step.
+        The most recently assigned variable in $C$ should now be the only variable in $C$ that was assigned in the
+        current level. Therefore, to do backtracking, we can look at the next most recently assigned variable, which
+        will be in the next highest level after the current level. We will backtrack to this level and then make the 
+        opposite assignment of the assignment performed at that level. The assigned variables and levels after this
+        level are removed since we don't care about them anymore. Another thing that is done is to keep track of 
+        how many times we've backtracked to the same variable by keeping a count. When this count is greater than 1,
+        meaning that we've set both positive and negative versions of this variable, we will continue to backtrack
+        up to the next level. This prevents the simulator from trying to set a variable continuously from positive
+        to negative and back to positive again. Although the clause learning would prevent this from occurring 
+        forever, we can further reduce this using the technique described. 
+
+        \item[\textbf{d:}]\textbf{Variable Selection}
+            The variable selection is done by randomly selecting a variable from the remaining unassigned variables.
+            The variable assignments are kept in a vector and this vector is indexed randomly. From this index 
+            location the vector is searched until the first unassigned variable is found. If no unassigned variables
+            are found, the function returns 0 which indicates that the problem has been satisfied.
+
+        \item[\textbf{e:}]\textbf{Semi Random Restarts}
+            As described in the non-chronological backtracking section, the number of times we've backtracked to 
+            a certain level is recorded. When we've made more than 1 backtrack for each level, we go back to level
+            0 and essentially restart from the beginning. Since the variable selection is random, the next assignment
+            is randomly chosen and the SAT solver starts over.
+
+    \end{enumerate}
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Test Results]
+        The sat solver is able to correctly solve each test we provided with as you can see in the appendix.
+
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Conclusion]
+    The goal for the project was to implement a SAT solver with Two-literal Watching, Clause Learning, and Non-chronological Backtracking. These were successfully implemented as discussed above. However, during the process, we implemented a branching heuristic that chooses the next variable on which to make a decision randomly. When all of the tests are run together, they take about 30 minutes to complete. If we were to do this again, we would add more intelligent branching
+    heuristics and try to reduce the number of times that we traverse the vectors. In the end, we have completed a solver that correctly resolves all test in a reasonable amount of time.
+
+\end{homeworkProblem}
+
+\clearpage
+
+\begin{homeworkProblem}[Appendix]
+
+Solver Output:
+
+\begin{quote}
+  \lstinputlisting[linewidth=\linewidth,breaklines=true]{source/out.txt}  
+\end{quote}
+    
+\end{homeworkProblem}
+%----------------------------------------------------------------------------------------
+
+\end{document}
