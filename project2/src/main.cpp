@@ -19,7 +19,6 @@ int main(int argc, char **argv) {
 	char c ;
     vector<vector<int> > clauses;
     int maxVarIndex;
-    bool ret;
 
 	// ------------------------------------------------------------
 	// Options/command line parsing
@@ -44,16 +43,6 @@ int main(int argc, char **argv) {
 	// ------------------------------------------------------------	
 
     parse_DIMACS_CNF(clauses, maxVarIndex, filename);
-
-    ret = DPLL(&clauses, maxVarIndex);
-
-    // Print solution line
-    if (ret) {
-        printf("s SATISFIABLE\n");
-        print_solution();
-    } else {
-        printf("s UNSATISFIABLE\n");
-    }
 
     return 0;
 }

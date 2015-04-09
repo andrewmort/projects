@@ -1,0 +1,11 @@
+Here is the conjugate gradient sovler we will use for Fall 08 760 Project 2 Analytical Placer.  This is a very effecient, very powerful solver from the University of Florida, called "cg_descent".  It has the advantage of being quite simple to use.  You just need
+
+cg_descent.h    the include file
+cg_descent.c    the actual solver routines
+cg_user.h       definitions of all the structures that pass in/out of the optimizer
+
+and functions to evaluate your function and its gradient.  The authors supply 5 driver examples called, nicely enough, driver1-5.c.   We also took one of these and expanded it out with a lot more comments for 760 users, and its called 760driver.c.
+
+To run this stuff, just type "make" in your directory, and you should get 6 executable files.  There are a few warnings which seem OK to ignore.   Then run 760driver and watch what it prints out -- it's optimizing a simple 100 variable function.  Go look at the source for 760driver.c to see exactly how to call and control the cg_descent routine.  Bug us if you have any questions.   -RAR
+
+
