@@ -17,8 +17,8 @@ void usage(char **argv) {
 int main(int argc, char **argv) {
 	char *filename ;
 	char c ;
-    vector<vector<int> > clauses;
-    int maxVarIndex;
+    vector<vector<int> > gates;
+    vector<vector<int> > pins;
 
 	// ------------------------------------------------------------
 	// Options/command line parsing
@@ -36,13 +36,22 @@ int main(int argc, char **argv) {
 	}
 	if(argc < 2) 
             usage(argv) ; // correct number of arguments
-	filename = argv[1];
-        
+	//filename = argv[1];
+        filename = "bin/lecture.netlist";
+
+
 	// ------------------------------------------------------------
 	// END Options/command line parsing
 	// ------------------------------------------------------------	
+    parse_netlist_file(gates, pins, filename);
 
-    parse_DIMACS_CNF(clauses, maxVarIndex, filename);
+    for(unsigned int i = 0; i < gates.size(); i++){
+	cout << i << ": ";
+    	for(unsigned int j = 0; j < gates[i].size(); j++){
+		cout << gates[i][j] << " ";
+	}
+	cout << endl;
+    }
 
     return 0;
 }

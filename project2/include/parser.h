@@ -35,9 +35,9 @@ using std::vector;
 // expression `clauses[i]'.  The jth literal of `clauses[i]' can be
 // referred to using `clauses[i][j]'.  The expression `clauses.size()'
 // tells you the number of clauses in the benchmark.
-void parse_DIMACS_CNF(vector<vector<int> > &clauses,
-		      int &maxVarIndex,
-		      const char *DIMACS_cnf_file);
+void parse_netlist_file(vector<vector<int> > &gates,
+		            vector<vector<int> > &pins,
+			    const char *netlist_file);
 
 
 

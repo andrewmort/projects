@@ -1,6 +1,6 @@
 /*********************************************************************
 			   ================
-			   CNF Parsing code
+			   Parsing code
 				18-760
 			      Fall 2006
 			   ================
@@ -40,33 +40,31 @@ public:
 //-  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 void skipWhitespace(StreamBuffer &in) {
-  while ((*in >= 9 && *in <= 13) || *in == 32)
-    ++in;
+    while ((*in >= 9 && *in <= 13) || *in == 32) 
+        ++in;
 }
-
 
 void skipLine(StreamBuffer &in) {
-  while (true) {
-    if (*in == EOF) return;
-    if (*in == '\n') { ++in; return; }
-    ++in;
-  }
+    while (true) {
+        if(*in == EOF) break;
+        if(*in == '\n') {
+		++in;
+		break;
+	}
+        ++in;
+    }
 }
 
-
 int parseInt(StreamBuffer &in) {
-  int     val = 0;
-  bool    neg = false;
+  int val = 0;
   skipWhitespace(in);
-  if      (*in == '-') neg = true, ++in;
-  else if (*in == '+') ++in;
-  if (*in < '0' || *in > '9')
-    fprintf(stderr, "PARSE ERROR! Unexpected char: %c\n", *in), exit(3);
+  //if (*in < '0' || *in > '\n')
+    //fprintf(stderr, "PARSE ERROR! Unexpected char: %c\n", *in), exit(3);
   while (*in >= '0' && *in <= '9') {
     val = val*10 + (*in - '0');
     ++in;
   }
-  return neg ? -val : val;
+  return val;
 }
 
 
@@ -81,43 +79,64 @@ void readClause(StreamBuffer &in, vector<vector<int> > &clauses) {
   clauses.push_back(newClause);
 }
 
-
-void parse_DIMACS_main(StreamBuffer &in, vector<vector<int> > &clauses) {
-  while (true) {
-    skipWhitespace(in);
-    if (*in == EOF) break;
-    else if (*in == 'c' || *in == 'p') skipLine(in);
-    else readClause(in, clauses);
-  }
+void readPin(StreamBuffer &in,  vector<vector<int> > &pins) {
+        vector<int> newClause;
+        int parsed_lit = parseInt(in);
+        if(parsed_lit == 0) return;
+        newClause.push_back(parsed_lit);
+        pins.push_back(newClause);
 }
 
+void parse_netlist_main(StreamBuffer &in, vector<vector<int> > &gates, vector<vector<int> > &pins) {
+    int num_gates = 0;
+    int num_wires = 0;
+    int num_pins = 0;
 
-void parse_DIMACS(gzFile input_stream, vector<vector<int> > &clauses)
-{
-  StreamBuffer in(input_stream);
-  parse_DIMACS_main(in, clauses);
-}
+    // Handle the Gates
+    skipLine(in);       // Skip first line
+    if(*in == EOF) fprintf(stderr, "PARSE ERROR! File format wrong\n");
+    num_gates = parseInt(in);
+    skipLine(in);       // Skip remainder of line
 
-
-void parse_DIMACS_CNF(vector<vector<int> > &clauses,
-		      int &maxVarIndex,
-		      const char *DIMACS_cnf_file) {
-  unsigned int i, j;
-  int candidate;
-  gzFile in = gzopen(DIMACS_cnf_file, "rb");
-  if (in == NULL) {
-    fprintf(stderr, "ERROR! Could not open file: %s\n",
-	    DIMACS_cnf_file);
-    exit(1);
-  }
-  parse_DIMACS(in, clauses);
-  gzclose(in);
-
-  maxVarIndex = 0;
-  for (i = 0; i < clauses.size(); ++i)
-    for (j = 0; j < clauses[i].size(); ++j) {
-      candidate = abs(clauses[i][j]);
-      if (candidate > maxVarIndex) maxVarIndex = candidate;
+    for(int i = 0; i < num_gates; i++) {
+        skipWhitespace(in);
+        if (*in == EOF) break;
+        else {
+            ++in; // Skip gate name
+            num_wires = parseInt(in);
+            for(int j = 0; j < num_wires; j++)
+                readClause(in, gates);
+        }
     }
+
+    // Handle the Pins
+    num_pins = parseInt(in);
+    skipLine(in);
+    for(int i = 0; i < num_pins; i++){
+        ++in;
+        readPin(in, pins);
+    }
+
+}
+
+void parse_netlist(gzFile input_stream, vector<vector<int> > &gates, vector<vector<int> > &pins)
+{
+	StreamBuffer in(input_stream);
+	parse_netlist_main(in, gates, pins);
+}
+
+void parse_netlist_file(vector<vector<int> > &gates, 
+		vector<vector<int> > &pins, 
+		const char *netlist_file)
+{
+	unsigned int i, j;
+	int candidate;
+	gzFile in = gzopen(netlist_file, "rb");
+	if(in == NULL) {
+		fprintf(stderr, "ERROR! Could not open file: %s\n", netlist_file);
+	exit(1);
+	}
+	parse_netlist(in, gates, pins);
+	gzclose(in);
 }
 
