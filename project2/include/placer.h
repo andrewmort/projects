@@ -10,13 +10,22 @@ typedef struct pin_t {
     int y;
 } pin_t;
 
+typedef struct net_t {
+    vector<int> gates;
+    int pin;
+
+    //net_t() {
+     ////   pin = 0;
+    //}
+} net_t;
+
 typedef struct point_t {
     double x;
     double y;
 } point_t;
 
-void place(vector<point_t> &gate_location, vector<vector<int> > &gates,
-    vector<vector<int> > &nets, vector<pin_t> &pins, 
+void place(vector<point_t> &locations, vector<vector<int> > &gates,
+    vector<net_t> &nets, vector<pin_t> &pins, 
     double chipx, double chipy, double unit);
 
 #endif

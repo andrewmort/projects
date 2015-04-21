@@ -146,7 +146,7 @@ void parse_netlist_file(vector<vector<int> > &gates,
 	gzclose(in);
 }
 
-int parse_file(vector<vector<int> > &gates, vector<vector<int> > &nets,
+int parse_file(vector<vector<int> > &gates, vector<net_t> &nets,
     vector<pin_t> &pins, double &chipx, double &chipy, double &unit, 
     const char *netlist_filename) {
 
@@ -162,6 +162,7 @@ int parse_file(vector<vector<int> > &gates, vector<vector<int> > &nets,
     int line_pos = 0;
     unsigned line = 0;
     int cur_num = 0;
+    int net;
 
 
     while(fgets(str, STR_BUF, netlist_file) != NULL) {
@@ -199,6 +200,7 @@ int parse_file(vector<vector<int> > &gates, vector<vector<int> > &nets,
                             gates.resize(atoi(buf.c_str()) + 1);
                         }  else if (line_pos == 1) {
                             nets.resize(atoi(buf.c_str()) + 1);
+                            
                         }
 
                     // The next several lines mark which gates and nets connect
@@ -208,9 +210,9 @@ int parse_file(vector<vector<int> > &gates, vector<vector<int> > &nets,
                         } else if (line_pos == 1) {
                             // This is just number of nets connected to gate
                         } else {
-                            int net = atoi(buf.c_str()); 
+                            net = atoi(buf.c_str()); 
                             gates[cur_num].push_back(net);
-                            nets[net].push_back(cur_num);
+                            nets[net].gates.push_back(cur_num);
                         }
 
                     // The next line has the number of pins
@@ -222,7 +224,9 @@ int parse_file(vector<vector<int> > &gates, vector<vector<int> > &nets,
                         if (line_pos == 0) {
                             cur_num = atoi(buf.c_str());
                         } else if (line_pos == 1) {
-                            pins[cur_num].net = atoi(buf.c_str());
+                            net = atoi(buf.c_str());
+                            pins[cur_num].net = net;
+                            nets[net].pin = cur_num;
                         } else if (line_pos == 2) {
                             pins[cur_num].x = atoi(buf.c_str());
                         } else if (line_pos == 3) {

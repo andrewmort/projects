@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 	char *filename ;
 	char c ;
     vector<vector<int> > gates;
-    vector<vector<int> > nets;
+    vector<net_t> nets;
     vector<pin_t> pins;
     vector<point_t> gate_location;
     double chipx, chipy, unit;
@@ -61,9 +61,9 @@ int main(int argc, char **argv) {
 
     printf("\nNets:\n");
     for(unsigned i = 1; i < nets.size(); i++){
-        printf("%d: ", i);
-    	for(unsigned j = 0; j < nets[i].size(); j++){
-            printf("%d ", nets[i][j]);
+        printf("%d: Pin %d - ", i, nets[i].pin);
+    	for(unsigned j = 0; j < nets[i].gates.size(); j++){
+            printf("%d ", nets[i].gates[j]);
 	    }
         printf("\n");
     }
