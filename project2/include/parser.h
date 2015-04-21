@@ -41,7 +41,8 @@ void parse_netlist_file(vector<vector<int> > &gates,
 			    const char *netlist_file);
 
 int parse_file(vector<vector<int> > &gates, vector<vector<int> > &nets,
-    vector<pin_t> &pins, double &unit, const char *netlist_filename);
+    vector<pin_t> &pins, double &chipx, double &chipy, double &unit, 
+    const char *netlist_filename);
 
 
 

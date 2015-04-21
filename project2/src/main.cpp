@@ -21,6 +21,8 @@ int main(int argc, char **argv) {
     vector<vector<int> > gates;
     vector<vector<int> > nets;
     vector<pin_t> pins;
+    vector<point_t> gate_location;
+    double chipx, chipy, unit;
 
 	// ------------------------------------------------------------
 	// Options/command line parsing
@@ -46,8 +48,7 @@ int main(int argc, char **argv) {
 	// END Options/command line parsing
 	// ------------------------------------------------------------	
     //parse_netlist_file(gates, pins, filename);
-    double unit;
-    parse_file(gates, nets, pins, unit, filename);
+    parse_file(gates, nets, pins, chipx, chipy, unit, filename);
 
     printf("Gates:\n");
     for(unsigned i = 1; i < gates.size(); i++){
@@ -72,6 +73,14 @@ int main(int argc, char **argv) {
 
     for(unsigned i = 1; i < pins.size(); i++){
         printf("%d: %d @ (%d, %d)\n", i, pins[i].net, pins[i].x, pins[i].y);
+    }
+
+    place(gate_location, gates, nets, pins, chipx, chipy, unit);
+
+    printf("\nLocations:\n");
+
+    for(unsigned i = 1; i < gate_location.size(); i++){
+        printf("%d: (%f, %f)\n", i, gate_location[i].x, gate_location[i].y);
     }
 
     return 0;

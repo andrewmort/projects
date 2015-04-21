@@ -147,7 +147,8 @@ void parse_netlist_file(vector<vector<int> > &gates,
 }
 
 int parse_file(vector<vector<int> > &gates, vector<vector<int> > &nets,
-    vector<pin_t> &pins, double &unit, const char *netlist_filename) {
+    vector<pin_t> &pins, double &chipx, double &chipy, double &unit, 
+    const char *netlist_filename) {
 
     // Try to open tester file
     FILE *netlist_file = fopen(netlist_filename, "r");
@@ -161,7 +162,6 @@ int parse_file(vector<vector<int> > &gates, vector<vector<int> > &nets,
     int line_pos = 0;
     unsigned line = 0;
     int cur_num = 0;
-    int chip_width, chip_height;
 
 
     while(fgets(str, STR_BUF, netlist_file) != NULL) {
@@ -186,9 +186,9 @@ int parse_file(vector<vector<int> > &gates, vector<vector<int> > &nets,
                     // Line 1 contains general info
                     if (line == 1) {
                         if (line_pos == 0 ) {
-                            chip_width = atoi(buf.c_str());
+                            chipx = atof(buf.c_str());
                         } else if (line_pos == 1) {
-                            chip_height = atoi(buf.c_str());
+                            chipy = atof(buf.c_str());
                         } else if (line_pos == 2){
                             unit = atof(buf.c_str());
                         }
