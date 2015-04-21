@@ -7,7 +7,7 @@
 using namespace std;
 
 double uniform_double();
-double calculate_wirelength();
+double calc_length();
 
 // Global vectors
 vector<point_t> *locations;
@@ -17,7 +17,7 @@ vector<pin_t> *pins;
 double chipx;
 double chipy;
 double unit;
-double gridlength, alpha;   // Gridlength and alpha
+double grid, alpha;   // Gridlength and alpha
 double w_wl, w_dp, w_bp;    // Weights (wirelength, density, boundary)
 int radius;                 // Radius size
 
@@ -37,12 +37,12 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
     unit = loc_unit;
 
     // Set initial values
-    gridlength = unit;
+    grid= 10;
     radius = 2;
-    //alpha = gridlength*radius;
-    alpha = 0.2;
+    alpha = grid*radius;
     w_bp = 1;
     w_dp = 1;
+    w_wl = 1;
 
     // Set initial gate locations
     locations->resize(gates->size());
@@ -51,21 +51,31 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
         locations->at(i).y = uniform_double() * chipy;
     }
 
-    // Find initial weights
-    //f = w_wl * wirelength + w_dp * density_penalty + w_bp * boundary_penalty;
-    calculate_wirelength();
 
     // Call optimizer to minimize cost function
+    double *x = &(locations->at(1).x);
+    unsigned n = 2*(locations->size() - 1);
+
+    for(i = 0; i < n; i++) {
+        printf("i: %d, val: %f\n", i, x[i]);
+    }
+    x[11] = 2;
 
 
 }
 
-double calculate_wirelength() {
+double calc_cost(double *x, unsigned n) {
+    return w_wl * calc_length() + w_dp * calc_density() + w_bp * calc_boundary();
+}
+
+void calc_gradient(double *g, double *x, unsigned n) {
+}
+
+double calc_length() {
     double length = 0;
     double xmax, xmin, ymax, ymin;
     point_t *loc;
     unsigned i,j;
-
 
     // Calculate smooth half-perimeter wirelength for each net
     for (i = 1; i < nets->size(); i++) {
@@ -104,6 +114,16 @@ double calculate_wirelength() {
     printf("\nLength: %f, alpha: %f\n", length, alpha);
     return length;
     
+}
+
+double calc_density() {
+    return 0;
+
+}
+
+double calc_boundary() {
+    return 0;
+
 }
 
 double uniform_double() {
