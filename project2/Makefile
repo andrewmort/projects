@@ -32,19 +32,10 @@ all: run
 
 # Compile main program by linking all object files (depends on object files)
 $(EXENAME): $(OBJ) $(OBJ_C)
-	@echo "***********************"
-	@echo 
-	@echo "hi"
-	@echo $(SRC_C)
-	@echo $(OBJ_C)
-	@echo $(SRC)
-	@echo $(OBJ)
-	@echo
-	@echo "************************"
-	$(CPP) $(FLAGS) $^ -lz -o $@ 
+	@$(CPP) $(FLAGS) $^ -lz -o $@ 
 
 $(OBJ_C): $(SRC_C) $(INC) Makefile
-	$(CC) -c $< -o $@
+	@$(CC) -c $< -o $@
 
 # Compile each source file into an object file (depends on cpp file and h files)
 obj/%.o: src/%.cpp $(INC) Makefile
