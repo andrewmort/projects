@@ -179,9 +179,12 @@ int parse_file(vector<vector<int> > &gates, vector<pin_t> &pins,
                 // Add all numbers to current buf
                 buf.push_back(str[i]);
 
+            // Use space or end of line as delimiter
             } else if(str[i] == ' ' || str[i] == '\n') {
                 // When buf is not empty, save data
                 if(!buf.empty()) {
+
+                    // Line 1 contains general info
                     if (line == 1) {
                         if (line_pos == 0 ) {
                             chip_width = atoi(buf.c_str());
@@ -190,18 +193,26 @@ int parse_file(vector<vector<int> > &gates, vector<pin_t> &pins,
                         } else {
                             unit = atof(buf.c_str());
                         }
+
+                    // Line 2 contains number of gates and nets
                     } else if (line == 2) {
                         if (line_pos == 0) {
                             gates.resize(atoi(buf.c_str()) + 1);
                         } 
+
+                    // The next several lines mark which gates and nets connect
                     } else if (line > 2 && line < 2 + gates.size()) {
                         if (line_pos == 0) {
                             cur_num = atoi(buf.c_str());
                         } else {
                             gates[cur_num].push_back(atoi(buf.c_str()));
                         }
+
+                    // The next line has the number of pins
                     } else if (line == 2 + gates.size()) {
                         pins.resize(atoi(buf.c_str()) + 1);
+
+                    // The remaining lines contain pin information
                     } else {
                         if (line_pos == 0) {
                             cur_num = atoi(buf.c_str());
@@ -214,11 +225,13 @@ int parse_file(vector<vector<int> > &gates, vector<pin_t> &pins,
                         }
                     }
 
+                    // Update line position and clear buffer
                     line_pos++;
                     buf.clear();
                 }
             }
 
+            // If we happen to see comment or new line go to next line
             if (str[i] == '#' || str[i] == '\n') {
                 break;
             }
