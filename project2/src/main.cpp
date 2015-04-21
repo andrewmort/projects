@@ -19,6 +19,7 @@ int main(int argc, char **argv) {
 	char *filename ;
 	char c ;
     vector<vector<int> > gates;
+    vector<vector<int> > nets;
     vector<pin_t> pins;
 
 	// ------------------------------------------------------------
@@ -46,7 +47,7 @@ int main(int argc, char **argv) {
 	// ------------------------------------------------------------	
     //parse_netlist_file(gates, pins, filename);
     double unit;
-    parse_file(gates, pins, unit, filename);
+    parse_file(gates, nets, pins, unit, filename);
 
     printf("Gates:\n");
     for(unsigned i = 1; i < gates.size(); i++){
@@ -56,6 +57,16 @@ int main(int argc, char **argv) {
 	    }
         printf("\n");
     }
+
+    printf("\nNets:\n");
+    for(unsigned i = 1; i < nets.size(); i++){
+        printf("%d: ", i);
+    	for(unsigned j = 0; j < nets[i].size(); j++){
+            printf("%d ", nets[i][j]);
+	    }
+        printf("\n");
+    }
+
 
     printf("\nPins:\n");
 

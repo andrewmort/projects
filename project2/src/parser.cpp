@@ -146,8 +146,8 @@ void parse_netlist_file(vector<vector<int> > &gates,
 	gzclose(in);
 }
 
-int parse_file(vector<vector<int> > &gates, vector<pin_t> &pins, 
-    double &unit, const char *netlist_filename) {
+int parse_file(vector<vector<int> > &gates, vector<vector<int> > &nets,
+    vector<pin_t> &pins, double &unit, const char *netlist_filename) {
 
     // Try to open tester file
     FILE *netlist_file = fopen(netlist_filename, "r");
@@ -155,7 +155,6 @@ int parse_file(vector<vector<int> > &gates, vector<pin_t> &pins,
         printf("Error opening %s\n", netlist_filename);
         return 1;
     }
-
 
     char str[STR_BUF];
     string buf;
@@ -188,9 +187,9 @@ int parse_file(vector<vector<int> > &gates, vector<pin_t> &pins,
                     if (line == 1) {
                         if (line_pos == 0 ) {
                             chip_width = atoi(buf.c_str());
-                        } else if(line_pos == 1) {
+                        } else if (line_pos == 1) {
                             chip_height = atoi(buf.c_str());
-                        } else {
+                        } else if (line_pos == 2){
                             unit = atof(buf.c_str());
                         }
 
@@ -198,14 +197,20 @@ int parse_file(vector<vector<int> > &gates, vector<pin_t> &pins,
                     } else if (line == 2) {
                         if (line_pos == 0) {
                             gates.resize(atoi(buf.c_str()) + 1);
-                        } 
+                        }  else if (line_pos == 1) {
+                            nets.resize(atoi(buf.c_str()) + 1);
+                        }
 
                     // The next several lines mark which gates and nets connect
                     } else if (line > 2 && line < 2 + gates.size()) {
                         if (line_pos == 0) {
                             cur_num = atoi(buf.c_str());
+                        } else if (line_pos == 1) {
+                            // This is just number of nets connected to gate
                         } else {
-                            gates[cur_num].push_back(atoi(buf.c_str()));
+                            int net = atoi(buf.c_str()); 
+                            gates[cur_num].push_back(net);
+                            nets[net].push_back(cur_num);
                         }
 
                     // The next line has the number of pins
