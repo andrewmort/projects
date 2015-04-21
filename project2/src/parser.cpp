@@ -7,11 +7,16 @@
 **********************************************************************/
 
 #include "parser.h"
+#include "placer.h"
 #include <iostream>
-using std::ifstream;
 #include <zlib.h>
 #include <cstdlib>
 #include <cstdio>
+#include <string>
+#include <cstring>
+using namespace std;
+
+#define STR_BUF 512
 
 //=====================================================================
 // DIMACS Parser:
@@ -97,6 +102,7 @@ void parse_netlist_main(StreamBuffer &in, vector<vector<int> > &gates, vector<ve
     if(*in == EOF) fprintf(stderr, "PARSE ERROR! File format wrong\n");
     num_gates = parseInt(in);
     skipLine(in);       // Skip remainder of line
+    printf("Num gate: %d\n", num_gates);
 
     for(int i = 0; i < num_gates; i++) {
         skipWhitespace(in);
@@ -138,5 +144,88 @@ void parse_netlist_file(vector<vector<int> > &gates,
 	}
 	parse_netlist(in, gates, pins);
 	gzclose(in);
+}
+
+int parse_file(vector<vector<int> > &gates, vector<pin_t> &pins, 
+    double &unit, const char *netlist_filename) {
+
+    // Try to open tester file
+    FILE *netlist_file = fopen(netlist_filename, "r");
+    if(netlist_file == NULL) {
+        printf("Error opening %s\n", netlist_filename);
+        return 1;
+    }
+
+
+    char str[STR_BUF];
+    string buf;
+    int line_pos = 0;
+    unsigned line = 0;
+    int cur_num = 0;
+    int chip_width, chip_height;
+
+
+    while(fgets(str, STR_BUF, netlist_file) != NULL) {
+        // Clear the string buffer for a new line
+        buf.clear();
+        line_pos = 0;
+        line++;
+
+        // Go through line
+        for(int i = 0; i < STR_BUF; i++) {
+
+            // Parse string and store result at delimiter
+            if(str[i] >= '0' && str[i] <= '9') {
+                // Add all numbers to current buf
+                buf.push_back(str[i]);
+
+            } else if(str[i] == ' ' || str[i] == '\n') {
+                // When buf is not empty, save data
+                if(!buf.empty()) {
+                    if (line == 1) {
+                        if (line_pos == 0 ) {
+                            chip_width = atoi(buf.c_str());
+                        } else if(line_pos == 1) {
+                            chip_height = atoi(buf.c_str());
+                        } else {
+                            unit = atof(buf.c_str());
+                        }
+                    } else if (line == 2) {
+                        if (line_pos == 0) {
+                            gates.resize(atoi(buf.c_str()) + 1);
+                        } 
+                    } else if (line > 2 && line < 2 + gates.size()) {
+                        if (line_pos == 0) {
+                            cur_num = atoi(buf.c_str());
+                        } else {
+                            gates[cur_num].push_back(atoi(buf.c_str()));
+                        }
+                    } else if (line == 2 + gates.size()) {
+                        pins.resize(atoi(buf.c_str()) + 1);
+                    } else {
+                        if (line_pos == 0) {
+                            cur_num = atoi(buf.c_str());
+                        } else if (line_pos == 1) {
+                            pins[cur_num].net = atoi(buf.c_str());
+                        } else if (line_pos == 2) {
+                            pins[cur_num].x = atoi(buf.c_str());
+                        } else if (line_pos == 3) {
+                            pins[cur_num].y = atoi(buf.c_str());
+                        }
+                    }
+
+                    line_pos++;
+                    buf.clear();
+                }
+            }
+
+            if (str[i] == '#' || str[i] == '\n') {
+                break;
+            }
+        }
+    }
+
+    fclose(netlist_file);
+    return 0;
 }
 

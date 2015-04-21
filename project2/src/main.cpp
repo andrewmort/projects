@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <vector>
 #include "parser.h"
+#include "placer.h"
 
 using namespace std;
 
@@ -18,7 +19,7 @@ int main(int argc, char **argv) {
 	char *filename ;
 	char c ;
     vector<vector<int> > gates;
-    vector<vector<int> > pins;
+    vector<pin_t> pins;
 
 	// ------------------------------------------------------------
 	// Options/command line parsing
@@ -43,14 +44,23 @@ int main(int argc, char **argv) {
 	// ------------------------------------------------------------
 	// END Options/command line parsing
 	// ------------------------------------------------------------	
-    parse_netlist_file(gates, pins, filename);
+    //parse_netlist_file(gates, pins, filename);
+    double unit;
+    parse_file(gates, pins, unit, filename);
 
-    for(unsigned int i = 0; i < gates.size(); i++){
-	cout << i << ": ";
-    	for(unsigned int j = 0; j < gates[i].size(); j++){
-		cout << gates[i][j] << " ";
-	}
-	cout << endl;
+    printf("Gates:\n");
+    for(unsigned i = 1; i < gates.size(); i++){
+        printf("%d: ", i);
+    	for(unsigned j = 0; j < gates[i].size(); j++){
+            printf("%d ", gates[i][j]);
+	    }
+        printf("\n");
+    }
+
+    printf("\nPins:\n");
+
+    for(unsigned i = 1; i < pins.size(); i++){
+        printf("%d: %d @ (%d, %d)\n", i, pins[i].net, pins[i].x, pins[i].y);
     }
 
     return 0;

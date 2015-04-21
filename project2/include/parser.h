@@ -9,6 +9,7 @@
 #ifndef __PARSER_H__
 #  define __PARSER_H__
 #include <vector>
+#include "placer.h"
 using std::vector;
 
 
@@ -38,6 +39,9 @@ using std::vector;
 void parse_netlist_file(vector<vector<int> > &gates,
 		            vector<vector<int> > &pins,
 			    const char *netlist_file);
+
+int parse_file(vector<vector<int> > &gates, vector<pin_t> &pins, 
+    double &unit, const char *netlist_filename);
 
 
 
