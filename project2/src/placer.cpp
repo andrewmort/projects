@@ -1,3 +1,7 @@
+extern "C"{
+#include "cg_user.h"
+}
+
 #include "placer.h"
 #include <vector>
 #include <cstdlib>
@@ -8,6 +12,10 @@ using namespace std;
 
 double uniform_double();
 double calc_length();
+double calc_density();
+double calc_boundary();
+double calc_cost(double *x, long int n);
+void calc_gradient(double *g, double *x, long int n);
 
 // Global vectors
 vector<point_t> *locations;
@@ -54,21 +62,18 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
 
     // Call optimizer to minimize cost function
     double *x = &(locations->at(1).x);
-    unsigned n = 2*(locations->size() - 1);
+    long int n = 2*(locations->size() - 1);
 
-    for(i = 0; i < n; i++) {
-        printf("i: %d, val: %f\n", i, x[i]);
-    }
-    x[11] = 2;
-
+    // Optimize cost function
+    cg_descent(x, n, NULL, NULL, 1, calc_cost, calc_gradient, NULL, NULL);
 
 }
 
-double calc_cost(double *x, unsigned n) {
+double calc_cost(double *x, long int n) {
     return w_wl * calc_length() + w_dp * calc_density() + w_bp * calc_boundary();
 }
 
-void calc_gradient(double *g, double *x, unsigned n) {
+void calc_gradient(double *g, double *x, long int n) {
 }
 
 double calc_length() {
