@@ -25,9 +25,10 @@ vector<pin_t> *pins;
 double chipx;
 double chipy;
 double unit;
-double grid, alpha;   // Gridlength and alpha
-double w_wl, w_dp, w_bp;    // Weights (wirelength, density, boundary)
-int radius;                 // Radius size
+double grid, alpha;   		// Gridlength and alpha
+double w_wl, w_dp, w_bp;    	// Weights (wirelength, density, boundary)
+double area, gridpts;		// Sum of area of gates and number of gridpoints
+int radius;                 	// Radius size
 
 void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates, 
     vector<net_t> &loc_nets, vector<pin_t> &loc_pins, 
@@ -43,6 +44,7 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
     chipx = loc_chipx;
     chipy = loc_chipy;
     unit = loc_unit;
+    set_area_gridpts();
 
     // Set initial values
     grid= 10;
@@ -120,10 +122,36 @@ double calc_length() {
     return length;
     
 }
+/*
+double calc_density() {
+	double cg = area/gridpts; 	// Capacity of gridpoints
+	double cost = 0;		// Density Cost
+	
+	for(int i = 1; i < locations->size(); i++) {
+		// Find bottom left corner of bounding box based on radius
+		llx = locations->at(i).x - radius;
+		lly = locations->at(i).y - radius;
+
+		// Determine the lowest, leftmost grid point
+		lgx = ceil(llx/grid)*grid;
+		lgy = ceil(lly/grid)*grid;
+
+		// Update Cost
+		cost = cost + potential(llx - lgx) * potential(lly - lgy) 
+			+ penalty;
+	}
+    return 0;
+	
+}*/
 
 double calc_density() {
-    return 0;
+	double cg = area/gridpts;
 
+	for(int i = 0; i < grid; i++){
+		for(int j = 0; j < grid; j++) {
+			
+		}
+	}
 }
 
 double calc_boundary() {
@@ -133,4 +161,18 @@ double calc_boundary() {
 
 double uniform_double() {
     return rand()/double(RAND_MAX);
+}
+
+double potential(double d) {
+	if(0 <= d && d <= radius/2) return (1-2*d^2/radius^2);
+	else if(radius/2 <= d && d <= radius) return (2*(d - radius)^2/radius^2);
+	else return 0.0;
+}
+
+void area_grid_points() {
+	area = 0;
+	for(int i = 1; i < gates->size(); i++) {
+		area = area + gates->at(i).size()*unit;
+	}
+	gridpts = chipx / grid * chipy / grid;
 }
