@@ -13,8 +13,12 @@ OBJ_C = $(patsubst src/%.c, obj/%.o, $(SRC_C))
 #TEST = benchmarks
 TEST = benchmarks/toy/toy1
 
+# Find tests
+TEST_FILES = $(shell find $(TEST) -type f)
+
 # Set output name
 EXENAME = bin/760placer
+CHECKER = bin/760proj2checker
 
 # Set debug variable
 #DEBUG = -D DEBUG
@@ -45,8 +49,14 @@ obj/%.o: src/%.cpp $(INC) Makefile
 obj/%.oc: src/%.c $(INC) Makefile
 	@$(CC) -c $< -o $@
 
-run: $(EXENAME)
-	bin/test.sh $(EXENAME) $(TEST)
+run: $(TEST_FILES)
+
+$(TEST_FILES): $(EXENAME)
+	$(EXENAME) $@ output/$(notdir $@).out
+	@echo
+	$(CHECKER) $@ output/$(notdir $@).out
+
+
 
 .PHONY: clean run
 

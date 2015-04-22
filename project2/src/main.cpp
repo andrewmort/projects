@@ -3,20 +3,20 @@
 #include <cstring>
 #include <unistd.h>
 #include <vector>
-#include "parser.h"
+#include "iobitch.h"
 #include "placer.h"
 
 using namespace std;
 
 void usage(char **argv) {
-	printf(" Usage: %s [options] <cktname>\n", argv[0]);
+	printf(" Usage: %s [options] <netlist> <output>\n", argv[0]);
 	printf(" Options:-\n");
 	printf("    -h\tDisplay this message\n\n");
 	exit(-1);
 }
 
 int main(int argc, char **argv) {
-	char *filename ;
+	char *in_filename, *out_filename;
 	char c ;
     vector<vector<int> > gates;
     vector<net_t> nets;
@@ -38,17 +38,22 @@ int main(int argc, char **argv) {
 			usage(argv);
 		}
 	}
-	if(argc < 2) 
+	if(argc < 3) 
             usage(argv) ; // correct number of arguments
-	//filename = argv[1];
-        filename = "bin/lecture.netlist";
+	in_filename = argv[1];
+	out_filename = argv[2];
 
 
 	// ------------------------------------------------------------
 	// END Options/command line parsing
 	// ------------------------------------------------------------	
-    //parse_netlist_file(gates, pins, filename);
-    parse_file(gates, nets, pins, chipx, chipy, unit, filename);
+    //parse_netlist_file(gates, pins, in_filename);
+
+    printf("Parsing Netlist: %s\n", in_filename);
+    if (parse_netlist(gates, nets, pins, chipx, chipy, unit, in_filename) != 0){
+	    exit(-2);
+    }
+
 
     printf("Gates:\n");
     for(unsigned i = 1; i < gates.size(); i++){
@@ -82,6 +87,13 @@ int main(int argc, char **argv) {
     for(unsigned i = 1; i < gate_location.size(); i++){
         printf("%d: (%f, %f)\n", i, gate_location[i].x, gate_location[i].y);
     }
+
+    printf("Writing Output: %s\n", out_filename);
+
+    if (write_output(gate_location, out_filename) != 0) {
+        exit(-3);
+    }
+
 
     return 0;
 }
