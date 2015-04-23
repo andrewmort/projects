@@ -18,6 +18,9 @@ double calc_cost(double *x, long int n);
 double potential(double d);
 void calc_gradient(double *g, double *x, long int n);
 void area_grid_points();
+double delta_length(unsigned idx, int dimen, double dist);
+double delta_density(unsigned idx, int dimen, double dist);
+double delta_boundary(unsigned idx, int dimen, double dist);
 
 // Global vectors
 vector<point_t> *locations;
@@ -75,11 +78,35 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
 }
 
 double calc_cost(double *x, long int n) {
-    printf("Cost");
-    return w_wl * calc_length() + w_dp * calc_density() + w_bp * calc_boundary();
+    double cost;
+
+    cost = w_wl * calc_length(); 
+    cost += w_dp * calc_density();
+    cost += w_bp * calc_boundary();
+
+    printf("Cost: %f\n", cost);
+    return cost;
 }
 
 void calc_gradient(double *g, double *x, long int n) {
+    double h = grid * H_FACTOR;
+    double delta;
+    unsigned i;
+
+    for (i = 1; i < gates->size(); i++) {
+        delta = delta_length(i, X_DIM, h) + 
+                delta_density(i, X_DIM, h) +
+                delta_boundary(i, X_DIM, h);
+
+        g[2*i - 2] = delta/h;
+
+        delta = delta_length(i, Y_DIM, h) + 
+                delta_density(i, Y_DIM, h) +
+                delta_boundary(i, Y_DIM, h);
+
+        g[2*i - 1] = delta/h;
+    }
+
 }
 
 double calc_length() {
@@ -176,7 +203,7 @@ double delta_length(unsigned idx, int dimen, double dist) {
             ymin += exp(-loc->y / alpha);
 
             // Find new max and min values
-            if (nets->at(net).gates[j] == idx) {
+            if (nets->at(net).gates[j] == static_cast<int>(idx)) {
                 // Use new values when we are looking at the current gate
                 xmax_new += exp(xnew / alpha);
                 xmin_new += exp(-xnew / alpha);
@@ -204,23 +231,19 @@ double delta_length(unsigned idx, int dimen, double dist) {
 
 double calc_density() {
 	double cg = area/gridpts;
-	int rowlength = (int) chipx/grid;
+	int rowlength = static_cast<int>(chipx/grid);
 	double cost = 0;
 	double temp_cost = 0;
     	
-	printf("Gridpts %f\n", gridpts);
-
 	for(int i = 0; i < gridpts; i++){
 		temp_cost = 0;
-		for(int j = 0; j < locations->size(); j++) {
+		for(unsigned j = 1; j < locations->size(); j++) {
 			double xdist = (i % rowlength) * grid - locations->at(j).x;
 			double ydist = (i / rowlength) * grid - locations->at(j).y;
             double area_factor = gates->at(j).size()*unit / pow(radius, 2);
 			temp_cost += area_factor * potential(xdist) * potential(ydist);
 		}
 		cost += pow(temp_cost - cg, 2);
-        printf("Grid %d, Cost %f\n", i, cost);
-        printf("cg: %f\n", cg);
 	}
 
     printf("Density: %f\n", cost);
@@ -235,8 +258,7 @@ double delta_density(unsigned idx, int dimen, double dist) {
 	if(dimen == X_DIM) xnew += dist;
 	if(dimen == Y_DIM) ynew += dist;
 
-	int rowlength = (int) chipx/grid;
-	int collength = (int) chipy/grid;
+	int rowlength = static_cast<int>(chipx/grid);
 	double initial = 0.0;
 	double final = 0.0;
 
@@ -254,7 +276,7 @@ double delta_density(unsigned idx, int dimen, double dist) {
 
 double calc_boundary() {
 	double cost = 0.0;
-	for(int i = 0; i < locations->size(); i++) {
+	for(unsigned i = 1; i < locations->size(); i++) {
 		double xpos = locations->at(i).x;
 		double ypos = locations->at(i).y;
 
@@ -266,6 +288,10 @@ double calc_boundary() {
     
     printf("Boundary: %f\n", cost);
     return cost;
+}
+
+double delta_boundary(unsigned idx, int dimen, double dist) {
+    return 0;
 }
 
 double uniform_double() {
@@ -280,17 +306,10 @@ double potential(double d) {
 
 void area_grid_points() {
 	area = 0;
-	for(int i = 1; i < gates->size(); i++) {
+	for(unsigned i = 1; i < gates->size(); i++) {
 		area += gates->at(i).size()*unit;
-        printf("Area: %f\n", area);
 	}
 
-    printf("Unit: %f\n", unit);
-    printf("Grid: %f\n", grid);
-    printf("Chipx: %f\n", chipx);
-    printf("Chipy: %f\n", chipy);
-    printf("Area: %f\n", area);
 	gridpts = (chipx / grid) * (chipy / grid);
-    printf("Grid points: %f\n", gridpts);
 
 }
