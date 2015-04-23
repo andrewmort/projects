@@ -15,7 +15,9 @@ double calc_length();
 double calc_density();
 double calc_boundary();
 double calc_cost(double *x, long int n);
+double potential(double d);
 void calc_gradient(double *g, double *x, long int n);
+void area_grid_points();
 
 // Global vectors
 vector<point_t> *locations;
@@ -44,7 +46,7 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
     chipx = loc_chipx;
     chipy = loc_chipy;
     unit = loc_unit;
-    set_area_gridpts();
+    area_grid_points();
 
     // Set initial values
     grid= 10;
@@ -147,24 +149,56 @@ double calc_density() {
 double calc_density() {
 	double cg = area/gridpts;
 	int rowlength = (int) chipx/grid;
-	int collength  = (int) chipy/grid;
 	double cost = 0.0;
 
 	for(int i = 0; i < gridpts; i++){
 		for(int j = 0; j < locations->size(); j++) {
-			double x = (i % rowlength) * grid;
-			double y = (i / rowlength) * grid;
-			double gx = locations->at(j).x;
-			double gy = locations->at(j).y;
+			double xdist = (i % rowlength) * grid - locations->at(j).x;
+			double ydist = (i / rowlength) * grid - locations->at(j).y;
 
-			cost += pow(((potential(x-gx) * potential(y-gy)) - cg), 2);
+			cost += pow(((potential(xdist) * potential(ydist)) - cg), 2);
 		}
 	}
+	return cost;
+}
+
+double delta_density(unsigned idx, int dimen, double dist) {
+	double cg = area/gridpts;
+	double xnew = locations->at(idx).x;
+	double ynew = locations->at(idx).y;
+
+	if(dimen == X_DIM) xnew += dist;
+	if(dimen == Y_DIM) ynew += dist;
+
+	int rowlength = (int) chipx/grid;
+	int collength = (int) chipy/grid;
+	double initial = 0.0;
+	double final = 0.0;
+
+	for(int i = 0; i < gridpts; i++){
+		double xdist = (i % rowlength) * grid - locations->at(idx).x;
+		double ydist = (i / rowlength) * grid - locations->at(idx).y;
+		double xdist_new = (i % rowlength) * grid - xnew;
+		double ydist_new = (i / rowlength) * grid - ynew;
+
+		initial += pow(((potential(xdist) * potential(ydist)) - cg), 2);
+		final += pow(((potential(xdist_new) * potential(ydist_new)) - cg), 2);
+	}
+	return final - initial;
 }
 
 double calc_boundary() {
-    return 0;
+	double cost = 0.0;
+	for(int i = 0; i < locations->size(); i++) {
+		double xpos = locations->at(i).x;
+		double ypos = locations->at(i).y;
 
+		if(xpos < 0) cost += pow(xpos / alpha, 2);
+		if(ypos < 0) cost += pow(ypos / alpha, 2);
+		if(xpos > chipx) cost += pow((xpos - chipx) / alpha, 2);
+		if(ypos > chipy) cost += pow((ypos - chipy) / alpha, 2);
+	}
+    	return cost;
 }
 
 double uniform_double() {

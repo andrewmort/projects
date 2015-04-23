@@ -4,6 +4,9 @@
 #include <vector>
 using std::vector;
 
+#define X_DIM 0
+#define Y_DIM 1
+
 typedef struct pin_t {
     int net;
     int x;
