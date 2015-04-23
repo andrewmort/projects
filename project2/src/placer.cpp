@@ -11,18 +11,18 @@ extern "C"{
 using namespace std;
 
 double uniform_double();
-double calc_length();
-double calc_density();
-double calc_boundary();
+double calc_length(point_t *loc);
+double calc_density(point_t *loc);
+double calc_boundary(point_t *loc);
+double delta_length(unsigned cell, int dimen, double dist, point_t *loc);
+double delta_density(unsigned cell, int dimen, double dist, point_t *loc);
+double delta_boundary(unsigned cell, int dimen, double dist, point_t *loc);
 double calc_cost(double *x, long int n);
-double p(double d);
 void calc_gradient(double *g, double *x, long int n);
-double delta_length(unsigned idx, int dimen, double dist);
-double delta_density(unsigned idx, int dimen, double dist);
-double delta_boundary(unsigned idx, int dimen, double dist);
+double p(double d);
 
 // Global vectors
-vector<point_t> *locations;
+//vector<point_t> *locations;
 vector<vector<int> > *gates;
 vector<net_t> *nets;
 vector<pin_t> *pins;
@@ -35,14 +35,14 @@ double area;     		// Sum of area of gates
 int grid_points;
 double radius;                 	// Radius size
 
-void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates, 
+void place(vector<point_t> &locations, vector<vector<int> > &loc_gates, 
     vector<net_t> &loc_nets, vector<pin_t> &loc_pins, 
     double loc_chipx, double loc_chipy, double loc_unit) {
 
     unsigned i;
 
     // Set global variables
-    locations = &loc_locations;
+    //locations = &loc_locations;
     gates = &loc_gates;
     nets = &loc_nets;
     pins = &loc_pins;
@@ -79,31 +79,36 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
     }
     */
 
-    locations->resize(gates->size());
-    locations->at(1).x = 2;
-    locations->at(1).y = 2;
-    locations->at(2).x = 3;
-    locations->at(2).y = 3;
+    locations.resize(gates->size());
+    locations.at(1).x = 4;
+    locations.at(1).y = 4;
+    locations.at(2).x = 1;
+    locations.at(2).y = 1;
 
     // Call optimizer to minimize cost function
-    double *x = &(locations->at(1).x);
-    long int n = 2*(locations->size() - 1);
-    double g[200];
+    double *x = &(locations[1].x);
+    long int n = 2*(locations.size() - 1);
 
-    calc_cost(x, n);
-    calc_gradient(g, x, n);
+    //calc_cost(x, n);
+    //calc_gradient(g, x, n);
 
     // Optimize cost function
-    //cg_descent(x, n, NULL, NULL, 1, calc_cost, calc_gradient, NULL, NULL);
+    cg_descent(x, n, NULL, NULL, 1, calc_cost, calc_gradient, NULL, NULL);
 
 }
 
 double calc_cost(double *x, long int n) {
     double cost;
+    point_t *loc; 
+    loc = reinterpret_cast<point_t *>(x);
 
-    cost = w_wl * calc_length(); 
-    cost += w_dp * calc_density();
-    cost += w_bp * calc_boundary();
+    for(long int i = 0; i < n/2; i++){
+        printf("i %ld, x %f, y %f\n", i, loc[i].x, loc[i].y);
+    }
+
+    cost = w_wl * calc_length(loc); 
+    cost += w_dp * calc_density(loc);
+    cost += w_bp * calc_boundary(loc);
 
     printf("Cost: %f\n", cost);
     return cost;
@@ -112,33 +117,36 @@ double calc_cost(double *x, long int n) {
 void calc_gradient(double *g, double *x, long int n) {
     double delta, h;
     unsigned i;
-
+    point_t *loc; 
+    
+    loc = reinterpret_cast<point_t *>(x);
     h = grid * H_FACTOR;
-    printf("\nh %f\n", h);
+
+    printf("h %f\n", h);
 
 
     for (i = 1; i < gates->size(); i++) {
         printf("\nCell %d, X Dimension\n", i);
-        delta = delta_length(i, X_DIM, h) + 
-                delta_density(i, X_DIM, h) +
-                delta_boundary(i, X_DIM, h);
+        delta = delta_length(i, X_DIM, h, loc) + 
+                delta_density(i, X_DIM, h, loc) +
+                delta_boundary(i, X_DIM, h, loc);
 
         g[2*i - 2] = delta/h;
 
         printf("\nCell %d, Y Dimension\n", i);
-        delta = delta_length(i, Y_DIM, h) + 
-                delta_density(i, Y_DIM, h) +
-                delta_boundary(i, Y_DIM, h);
+        delta = delta_length(i, Y_DIM, h, loc) + 
+                delta_density(i, Y_DIM, h, loc) +
+                delta_boundary(i, Y_DIM, h, loc);
 
         g[2*i - 1] = delta/h;
     }
 
 }
 
-double calc_length() {
+double calc_length(point_t *loc) {
     double length = 0;
     double xmax, xmin, ymax, ymin;
-    point_t *loc;
+    point_t *cur_loc;
     unsigned i,j;
 
     // Calculate smooth half-perimeter wirelength for each net
@@ -155,13 +163,13 @@ double calc_length() {
         }
 
         for (j = 0; j < nets->at(i).gates.size(); j++) {
-            loc = &(locations->at(nets->at(i).gates[j]));
-            //loc = &(locations->at(1));
+            cur_loc = loc + (nets->at(i).gates[j]) - 1;
+            //cur_loc = &(locations->at(nets->at(i).gates[j]));
 
-            xmax += exp(loc->x / alpha);
-            xmin += exp(-loc->x / alpha);
-            ymax += exp(loc->y / alpha);
-            ymin += exp(-loc->y / alpha);
+            xmax += exp(cur_loc->x / alpha);
+            xmin += exp(-cur_loc->x / alpha);
+            ymax += exp(cur_loc->y / alpha);
+            ymin += exp(-cur_loc->y / alpha);
         }
 
         // Find max and min
@@ -180,17 +188,17 @@ double calc_length() {
     
 }
 
-double delta_length(unsigned idx, int dimen, double dist) {
+double delta_length(unsigned cell, int dimen, double dist, point_t *loc) {
     double xnew, ynew;
     double xmax, xmin, ymax, ymin;
     double xmax_new, xmin_new, ymax_new, ymin_new;
     unsigned i,j;
     double initial = 0, final = 0;
-    point_t *loc;
+    point_t *cur_loc;
 
     // Set coordinates for current gate
-    xnew = locations->at(idx).x;
-    ynew = locations->at(idx).y;
+    xnew = loc[cell - 1].x;
+    ynew = loc[cell - 1].y;
 
     // Update dimension that is changing
     if (dimen == X_DIM) xnew += dist;
@@ -198,11 +206,11 @@ double delta_length(unsigned idx, int dimen, double dist) {
     
 
     // Go through all nets connected to gate
-    for (i = 0; i < gates->at(idx).size(); i++) {
+    for (i = 0; i < gates->at(cell).size(); i++) {
         xmax = 0; xmin = 0; ymax = 0; ymin = 0;
 
         // Find current net and pin value
-        int net = gates->at(idx).at(i);
+        int net = gates->at(cell).at(i);
         int pin = nets->at(net).pin;
 
         // Store locations of pins
@@ -221,15 +229,15 @@ double delta_length(unsigned idx, int dimen, double dist) {
 
         // Go through all gates connected to current net
         for (j = 0; j < nets->at(net).gates.size(); j++) {
-            loc = &(locations->at(nets->at(net).gates[j]));
+            cur_loc = loc + nets->at(net).gates[j] - 1;
 
-            xmax += exp(loc->x / alpha);
-            xmin += exp(-loc->x / alpha);
-            ymax += exp(loc->y / alpha);
-            ymin += exp(-loc->y / alpha);
+            xmax += exp(cur_loc->x / alpha);
+            xmin += exp(-cur_loc->x / alpha);
+            ymax += exp(cur_loc->y / alpha);
+            ymin += exp(-cur_loc->y / alpha);
 
             // Find new max and min values
-            if (nets->at(net).gates[j] == static_cast<int>(idx)) {
+            if (nets->at(net).gates[j] == static_cast<int>(cell)) {
                 // Use new values when we are looking at the current gate
                 xmax_new += exp(xnew / alpha);
                 xmin_new += exp(-xnew / alpha);
@@ -237,10 +245,10 @@ double delta_length(unsigned idx, int dimen, double dist) {
                 ymin_new += exp(-ynew / alpha);
             } else {
                 // Use current values for all other gates
-                xmax_new += exp(loc->x / alpha);
-                xmin_new += exp(-loc->x / alpha);
-                ymax_new += exp(loc->y / alpha);
-                ymin_new += exp(-loc->y / alpha);
+                xmax_new += exp(cur_loc->x / alpha);
+                xmin_new += exp(-cur_loc->x / alpha);
+                ymax_new += exp(cur_loc->y / alpha);
+                ymin_new += exp(-cur_loc->y / alpha);
             }
         }
 
@@ -256,7 +264,7 @@ double delta_length(unsigned idx, int dimen, double dist) {
     return final - initial;
 }
 
-double calc_density() {
+double calc_density(point_t *loc) {
     double cg, cost, potential;
     double x_pt, y_pt, xdist, ydist, norm_area;
     unsigned i;
@@ -270,9 +278,9 @@ double calc_density() {
         for (y_pt = 0; y_pt <= chipy; y_pt += grid) {
             potential = 0;
 
-            for (i = 1; i < locations->size(); i++) {
-                xdist = abs(x_pt - locations->at(i).x);
-                ydist = abs(y_pt - locations->at(i).y);
+            for (i = 1; i < gates->size(); i++) {
+                xdist = abs(x_pt - loc[i - 1].x);
+                ydist = abs(y_pt - loc[i - 1].y);
                 norm_area = (gates->at(i).size() * unit) / pow(radius, 2);
 
                 //printf("xdist %f, p(xdist) %f, ydist %f, p(ydist) %f\n", 
@@ -291,7 +299,7 @@ double calc_density() {
 	return cost;
 }
 
-double delta_density(unsigned idx, int dimen, double dist) {
+double delta_density(unsigned cell, int dimen, double dist, point_t *loc) {
     double cg, initial, final, potential, potential_new;
     double x_pt, y_pt, xdist, ydist, xdist_new, ydist_new, norm_area;
     unsigned i;
@@ -304,19 +312,19 @@ double delta_density(unsigned idx, int dimen, double dist) {
         for (y_pt = 0; y_pt <= chipy; y_pt += grid) {
             potential = 0; potential_new = 0;
             
-            for (i = 1; i < locations->size(); i++) {
-                xdist = abs(x_pt - locations->at(i).x);
-                ydist = abs(y_pt - locations->at(i).y);
+            for (i = 1; i < gates->size(); i++) {
+                xdist = abs(x_pt - loc[i - 1].x);
+                ydist = abs(y_pt - loc[i - 1].y);
                 xdist_new = xdist;
                 ydist_new = ydist;
 
                 norm_area = (gates->at(i).size() * unit) / pow(radius, 2);
 
-                if (i == idx) {
+                if (i == cell) {
                     if (dimen == X_DIM) {
-                        xdist_new = abs(x_pt - locations->at(i).x - dist);
+                        xdist_new = abs(x_pt - loc[i - 1].x - dist);
                     } else {
-                        ydist_new = abs(y_pt - locations->at(i).y - dist);
+                        ydist_new = abs(y_pt - loc[i - 1].y - dist);
                     }
                 } 
 
@@ -333,12 +341,12 @@ double delta_density(unsigned idx, int dimen, double dist) {
     return final - initial;
 }
 
-double calc_boundary() {
+double calc_boundary(point_t *loc) {
 	double cost = 0.0;
 
-	for(unsigned i = 1; i < locations->size(); i++) {
-		double xpos = locations->at(i).x;
-		double ypos = locations->at(i).y;
+	for(unsigned i = 1; i < gates->size(); i++) {
+		double xpos = loc[i - 1].x;
+		double ypos = loc[i - 1].y;
 
 		if(xpos < 0) cost += pow(xpos / alpha, 2);
 		if(ypos < 0) cost += pow(ypos / alpha, 2);
@@ -350,13 +358,13 @@ double calc_boundary() {
     return cost;
 }
 
-double delta_boundary(unsigned idx, int dimen, double dist) {
+double delta_boundary(unsigned cell, int dimen, double dist, point_t *loc) {
     double initial = 0;
 	double final = 0;
     double xpos, ypos, xpos_new, ypos_new;
 
-    xpos = locations->at(idx).x;
-    ypos = locations->at(idx).y;
+    xpos = loc[cell - 1].x;
+    ypos = loc[cell - 1].y;
 
     if (dimen == X_DIM) {
         xpos_new = xpos + dist;
