@@ -49,7 +49,7 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
 
     // Set initial values
     grid= 10;
-    radius = 2;
+    radius = 10;
     alpha = grid*radius;
     w_bp = 1;
     w_dp = 1;
@@ -201,41 +201,24 @@ double delta_length(unsigned idx, int dimen, double dist) {
 
     return final - initial;
 }
-/*
-double calc_density() {
-	double cg = area/gridpts; 	// Capacity of gridpoints
-	double cost = 0;		// Density Cost
-	
-	for(int i = 1; i < locations->size(); i++) {
-		// Find bottom left corner of bounding box based on radius
-		llx = locations->at(i).x - radius;
-		lly = locations->at(i).y - radius;
-
-		// Determine the lowest, leftmost grid point
-		lgx = ceil(llx/grid)*grid;
-		lgy = ceil(lly/grid)*grid;
-
-		// Update Cost
-		cost += potential(llx - lgx) * potential(lly - lgy) 
-			+ penalty;
-	}
-    return 0;
-	
-}*/
 
 double calc_density() {
 	double cg = area/gridpts;
 	int rowlength = (int) chipx/grid;
-	double cost = 0.0;
-    printf("Gridpts %f\n", gridpts);
+	double cost = 0;
+	double temp_cost = 0;
+    	
+	printf("Gridpts %f\n", gridpts);
 
 	for(int i = 0; i < gridpts; i++){
+		temp_cost = 0;
 		for(int j = 0; j < locations->size(); j++) {
 			double xdist = (i % rowlength) * grid - locations->at(j).x;
 			double ydist = (i / rowlength) * grid - locations->at(j).y;
-
-			cost += pow(((potential(xdist) * potential(ydist)) - cg), 2);
+            double area_factor = gates->at(j).size()*unit / pow(radius, 2);
+			temp_cost += area_factor * potential(xdist) * potential(ydist);
 		}
+		cost += pow(temp_cost - cg, 2);
         printf("Grid %d, Cost %f\n", i, cost);
         printf("cg: %f\n", cg);
 	}
@@ -290,9 +273,9 @@ double uniform_double() {
 }
 
 double potential(double d) {
-	if(0 <= d && d <= radius/2) return (1-2*pow(d,2)/pow(radius,2));
-	else if(radius/2 <= d && d <= radius) return (2*pow(d - radius,2)/pow(radius,2));
-	else return 0.0;
+	if(-radius/2 <= d && d <= radius/2) return (1-2*pow(d,2)/pow(radius,2));
+	else if(radius <= d || d <= -radius) return 0;
+    else return (2*pow(abs(d) - radius,2)/pow(radius,2));
 }
 
 void area_grid_points() {
