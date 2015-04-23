@@ -291,7 +291,30 @@ double calc_boundary() {
 }
 
 double delta_boundary(unsigned idx, int dimen, double dist) {
-    return 0;
+    double initial = 0;
+	double final = 0;
+    double xpos_new = locations->at(idx).x;
+    double ypos_new = locations->at(idx).y;
+
+    if(dimen == X_DIM) xpos_new += dist;
+    if(dimen == Y_DIM) ypos_new += dist;
+
+    if(xpos_new < 0) final += pow(xpos_new / alpha, 2);
+    if(ypos_new < 0) final += pow(ypos_new / alpha, 2);
+    if(xpos_new > chipx) final += pow((xpos_new - chipx) / alpha, 2);
+    if(ypos_new > chipy) final += pow((ypos_new - chipy) / alpha, 2);
+
+    for(unsigned i = 1; i < gates->size(); i++) {
+        double xpos = locations->at(i).x;
+        double ypos = locations->at(i).y;
+
+        if(xpos < 0) initial += pow(xpos / alpha, 2);
+        if(ypos < 0) initial += pow(ypos / alpha, 2);
+        if(xpos > chipx) initial += pow((xpos - chipx) / alpha, 2);
+        if(ypos > chipy) initial += pow((ypos - chipy) / alpha, 2);
+    }
+    
+    return final - initial;
 }
 
 double uniform_double() {
