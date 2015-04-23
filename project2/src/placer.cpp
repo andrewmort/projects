@@ -137,7 +137,7 @@ double calc_density() {
 		lgy = ceil(lly/grid)*grid;
 
 		// Update Cost
-		cost = cost + potential(llx - lgx) * potential(lly - lgy) 
+		cost += potential(llx - lgx) * potential(lly - lgy) 
 			+ penalty;
 	}
     return 0;
@@ -146,10 +146,18 @@ double calc_density() {
 
 double calc_density() {
 	double cg = area/gridpts;
+	int rowlength = (int) chipx/grid;
+	int collength  = (int) chipy/grid;
+	double cost = 0.0;
 
-	for(int i = 0; i < grid; i++){
-		for(int j = 0; j < grid; j++) {
-			
+	for(int i = 0; i < gridpts; i++){
+		for(int j = 0; j < locations->size(); j++) {
+			double x = (i % rowlength) * grid;
+			double y = (i / rowlength) * grid;
+			double gx = locations->at(j).x;
+			double gy = locations->at(j).y;
+
+			cost += pow(((potential(x-gx) * potential(y-gy)) - cg), 2);
 		}
 	}
 }
@@ -164,8 +172,8 @@ double uniform_double() {
 }
 
 double potential(double d) {
-	if(0 <= d && d <= radius/2) return (1-2*d^2/radius^2);
-	else if(radius/2 <= d && d <= radius) return (2*(d - radius)^2/radius^2);
+	if(0 <= d && d <= radius/2) return (1-2*pow(d,2)/pow(radius,2));
+	else if(radius/2 <= d && d <= radius) return (2*pow(d - radius,2)/pow(radius,2));
 	else return 0.0;
 }
 
