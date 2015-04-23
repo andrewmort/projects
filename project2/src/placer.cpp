@@ -17,7 +17,6 @@ double calc_boundary();
 double calc_cost(double *x, long int n);
 double p(double d);
 void calc_gradient(double *g, double *x, long int n);
-void area_grid_points();
 double delta_length(unsigned idx, int dimen, double dist);
 double delta_density(unsigned idx, int dimen, double dist);
 double delta_boundary(unsigned idx, int dimen, double dist);
@@ -32,8 +31,9 @@ double chipy;
 double unit;
 double grid, alpha;   		// Gridlength and alpha
 double w_wl, w_dp, w_bp;    	// Weights (wirelength, density, boundary)
-double area, gridpts;		// Sum of area of gates and number of gridpoints
-int radius;                 	// Radius size
+double area;     		// Sum of area of gates 
+int grid_points;
+double radius;                 	// Radius size
 
 void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates, 
     vector<net_t> &loc_nets, vector<pin_t> &loc_pins, 
@@ -51,15 +51,24 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
     unit = loc_unit;
 
     // Set initial values
-    grid= 2.5;
-    radius = 2;
+    grid= 1.8;
+    radius = 1.8;
     //alpha = grid*radius;
-    alpha = 0.5;
+    alpha = 0.2;
     w_bp = 1;
     w_dp = 1;
     w_wl = 1;
 
-    area_grid_points();
+    // Total number of grid points
+    grid_points = (static_cast<int>(chipx/grid) + 1)
+                  *  (static_cast<int>(chipy/grid) + 1);
+
+    // Total area used by cells on chip
+    area = 0;
+    for (i = 1; i < gates->size(); i++) {
+        area += gates->at(i).size()*unit;
+    }
+
 
     // Set initial gate locations
     /*
@@ -71,17 +80,21 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
     */
 
     locations->resize(gates->size());
-    locations->at(1).x = 4;
-    locations->at(1).y = 1;
-    locations->at(2).x = 1;
-    locations->at(2).y = 4;
+    locations->at(1).x = 2;
+    locations->at(1).y = 2;
+    locations->at(2).x = 3;
+    locations->at(2).y = 3;
 
     // Call optimizer to minimize cost function
     double *x = &(locations->at(1).x);
     long int n = 2*(locations->size() - 1);
+    double g[200];
+
+    calc_cost(x, n);
+    calc_gradient(g, x, n);
 
     // Optimize cost function
-    cg_descent(x, n, NULL, NULL, 1, calc_cost, calc_gradient, NULL, NULL);
+    //cg_descent(x, n, NULL, NULL, 1, calc_cost, calc_gradient, NULL, NULL);
 
 }
 
@@ -97,17 +110,22 @@ double calc_cost(double *x, long int n) {
 }
 
 void calc_gradient(double *g, double *x, long int n) {
-    double h = grid * H_FACTOR;
-    double delta;
+    double delta, h;
     unsigned i;
 
+    h = grid * H_FACTOR;
+    printf("\nh %f\n", h);
+
+
     for (i = 1; i < gates->size(); i++) {
+        printf("\nCell %d, X Dimension\n", i);
         delta = delta_length(i, X_DIM, h) + 
                 delta_density(i, X_DIM, h) +
                 delta_boundary(i, X_DIM, h);
 
         g[2*i - 2] = delta/h;
 
+        printf("\nCell %d, Y Dimension\n", i);
         delta = delta_length(i, Y_DIM, h) + 
                 delta_density(i, Y_DIM, h) +
                 delta_boundary(i, Y_DIM, h);
@@ -234,26 +252,39 @@ double delta_length(unsigned idx, int dimen, double dist) {
             + log(ymax_new) + log(ymin_new));
     }
 
+    printf("Length Delta: %f\n", final - initial);
     return final - initial;
 }
 
 double calc_density() {
-	double cg = area/gridpts;
-	int rowlength = static_cast<int>(chipx/grid);
-	double cost = 0;
-	double potential = 0;
+    double cg, cost, potential;
+    double x_pt, y_pt, xdist, ydist, norm_area;
+    unsigned i;
+
+    cost = 0;
+	cg = area/grid_points;
     	
-	for(int i = 0; i < gridpts; i++){
-		potential = 0;
-		for(unsigned j = 1; j < locations->size(); j++) {
-			double xdist = abs((i % rowlength) * grid - locations->at(j).x);
-			double ydist = abs((i / rowlength) * grid - locations->at(j).y);
-            double gate_area = gates->at(j).size()*unit;
-            double C = gate_area / pow(radius, 2);
-			
-            potential += C * p(xdist) * p(ydist);
-		}
-		cost += pow(potential - cg, 2);
+    printf("area %f, grid_points %d, cg %f\n", area, grid_points, cg);
+
+    for (x_pt = 0; x_pt <= chipx; x_pt += grid) {
+        for (y_pt = 0; y_pt <= chipy; y_pt += grid) {
+            potential = 0;
+
+            for (i = 1; i < locations->size(); i++) {
+                xdist = abs(x_pt - locations->at(i).x);
+                ydist = abs(y_pt - locations->at(i).y);
+                norm_area = (gates->at(i).size() * unit) / pow(radius, 2);
+
+                //printf("xdist %f, p(xdist) %f, ydist %f, p(ydist) %f\n", 
+                //    xdist, p(xdist), ydist, p(ydist));
+
+                potential += norm_area * p(xdist) * p(ydist);
+            }
+
+            //printf("x %f, y %f, potential %f\n", x_pt, y_pt, potential);
+
+		    cost += pow(potential - cg, 2);
+        }
 	}
 
     printf("Density: %f\n", cost);
@@ -261,37 +292,50 @@ double calc_density() {
 }
 
 double delta_density(unsigned idx, int dimen, double dist) {
-	double cg = area/gridpts;
-	double xnew = locations->at(idx).x;
-	double ynew = locations->at(idx).y;
+    double cg, initial, final, potential, potential_new;
+    double x_pt, y_pt, xdist, ydist, xdist_new, ydist_new, norm_area;
+    unsigned i;
 
-	if(dimen == X_DIM) xnew += dist;
-	if(dimen == Y_DIM) ynew += dist;
+    initial = 0; final = 0;
+	cg = area/grid_points;
 
-	int rowlength = static_cast<int>(chipx/grid);
-	double initial = 0;
-	double final = 0;
-    double potential = 0;
-    double potential_new = 0;
-    double C = gates->at(idx).size() * unit / pow(radius, 2);
+    	
+    for (x_pt = 0; x_pt <= chipx; x_pt += grid) {
+        for (y_pt = 0; y_pt <= chipy; y_pt += grid) {
+            potential = 0; potential_new = 0;
+            
+            for (i = 1; i < locations->size(); i++) {
+                xdist = abs(x_pt - locations->at(i).x);
+                ydist = abs(y_pt - locations->at(i).y);
+                xdist_new = xdist;
+                ydist_new = ydist;
 
-	for(int i = 0; i < gridpts; i++){
-		double xdist = abs((i % rowlength) * grid - locations->at(idx).x);
-		double ydist = abs((i / rowlength) * grid - locations->at(idx).y);
-		double xdist_new = abs((i % rowlength) * grid - xnew);
-		double ydist_new = abs((i / rowlength) * grid - ynew);
+                norm_area = (gates->at(i).size() * unit) / pow(radius, 2);
 
-        potential = C * p(xdist) * p(ydist);
-        potential_new = C * p(xdist_new) * p(ydist_new);
+                if (i == idx) {
+                    if (dimen == X_DIM) {
+                        xdist_new = abs(x_pt - locations->at(i).x - dist);
+                    } else {
+                        ydist_new = abs(y_pt - locations->at(i).y - dist);
+                    }
+                } 
 
-		initial += pow(potential - cg, 2);
-		final += pow(potential_new - cg, 2);
+                potential += norm_area * p(xdist) * p(ydist);
+                potential_new += norm_area * p(xdist_new) * p(ydist_new);
+            }
+
+            initial += pow(potential - cg, 2);
+            final += pow(potential_new - cg, 2);
+        }
 	}
-	return final - initial;
+
+    printf("Density Delta: %f\n", final - initial);
+    return final - initial;
 }
 
 double calc_boundary() {
 	double cost = 0.0;
+
 	for(unsigned i = 1; i < locations->size(); i++) {
 		double xpos = locations->at(i).x;
 		double ypos = locations->at(i).y;
@@ -309,27 +353,36 @@ double calc_boundary() {
 double delta_boundary(unsigned idx, int dimen, double dist) {
     double initial = 0;
 	double final = 0;
-    double xpos_new = locations->at(idx).x;
-    double ypos_new = locations->at(idx).y;
+    double xpos, ypos, xpos_new, ypos_new;
 
-    if(dimen == X_DIM) xpos_new += dist;
-    if(dimen == Y_DIM) ypos_new += dist;
+    xpos = locations->at(idx).x;
+    ypos = locations->at(idx).y;
 
-    if(xpos_new < 0) final += pow(xpos_new / alpha, 2);
-    if(ypos_new < 0) final += pow(ypos_new / alpha, 2);
-    if(xpos_new > chipx) final += pow((xpos_new - chipx) / alpha, 2);
-    if(ypos_new > chipy) final += pow((ypos_new - chipy) / alpha, 2);
-
-    for(unsigned i = 1; i < gates->size(); i++) {
-        double xpos = locations->at(i).x;
-        double ypos = locations->at(i).y;
-
-        if(xpos < 0) initial += pow(xpos / alpha, 2);
-        if(ypos < 0) initial += pow(ypos / alpha, 2);
-        if(xpos > chipx) initial += pow((xpos - chipx) / alpha, 2);
-        if(ypos > chipy) initial += pow((ypos - chipy) / alpha, 2);
+    if (dimen == X_DIM) {
+        xpos_new = xpos + dist;
+        ypos_new = ypos;
+    } else {
+        xpos_new = xpos;
+        ypos_new = ypos + dist;
     }
-    
+
+    // Initial X
+    if (xpos < 0) initial += pow(xpos / alpha, 2);
+    else if (xpos > chipx) initial += pow((xpos - chipx) / alpha, 2);
+
+    // Initial Y
+    if (ypos < 0) initial += pow(ypos / alpha, 2);
+    else if (ypos > chipy) initial += pow((ypos - chipy) / alpha, 2);
+
+    // Final X
+    if (xpos_new < 0) final += pow(xpos_new / alpha, 2);
+    else if (xpos_new > chipx) final += pow((xpos_new - chipx) / alpha, 2);
+
+    // Final Y
+    if (ypos_new < 0) final += pow(ypos_new / alpha, 2);
+    else if (ypos_new > chipy) final += pow((ypos_new - chipy) / alpha, 2);
+
+    printf("Boundary Delta: %f\n", final - initial);
     return final - initial;
 }
 
@@ -338,17 +391,10 @@ double uniform_double() {
 }
 
 double p(double d) {
-	if(0 <= d && d <= radius/2) return (1-2*pow(d,2)/pow(radius,2));
-	else if(radius /2 <= d && d <= radius) return (2*pow(d - radius,2)/pow(radius,2));
-    else return 0;
-}
-
-void area_grid_points() {
-	area = 0;
-	for(unsigned i = 1; i < gates->size(); i++) {
-		area += gates->at(i).size()*unit;
-	}
-
-	gridpts = (chipx / grid) * (chipy / grid);
-
+	if(0 <= d && d <= radius/2) 
+        return (1 - 2 * pow(d,2) / pow(radius,2));
+	else if(radius / 2 <= d && d <= radius) 
+        return (2 * pow(d - radius,2) / pow(radius,2));
+    else 
+        return 0;
 }
