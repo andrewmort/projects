@@ -11,7 +11,7 @@ OBJ_C = $(patsubst src/%.c, obj/%.o, $(SRC_C))
 
 # Set tests
 #TEST = benchmarks
-TEST = benchmarks/toy/toy1
+TEST = benchmarks/tiny/tiny1
 
 # Find tests
 TEST_FILES = $(shell find $(TEST) -type f)
@@ -58,7 +58,7 @@ $(TEST_FILES): $(EXENAME)
 
 
 
-.PHONY: clean run
+.PHONY: clean run $(TEST_FILES)
 
 clean:
 	@rm -rf $(OBJ) $(EXENAME)

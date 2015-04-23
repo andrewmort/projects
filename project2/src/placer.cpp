@@ -51,9 +51,10 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
     unit = loc_unit;
 
     // Set initial values
-    grid= 10;
-    radius = 10;
-    alpha = grid*radius;
+    grid= 2.5;
+    radius = 2;
+    //alpha = grid*radius;
+    alpha = 0.5;
     w_bp = 1;
     w_dp = 1;
     w_wl = 1;
@@ -61,12 +62,19 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
     area_grid_points();
 
     // Set initial gate locations
+    /*
     locations->resize(gates->size());
     for (i = 1; i < locations->size(); i++) {
         locations->at(i).x = uniform_double() * chipx;
         locations->at(i).y = uniform_double() * chipy;
     }
+    */
 
+    locations->resize(gates->size());
+    locations->at(1).x = 4;
+    locations->at(1).y = 1;
+    locations->at(2).x = 1;
+    locations->at(2).y = 4;
 
     // Call optimizer to minimize cost function
     double *x = &(locations->at(1).x);

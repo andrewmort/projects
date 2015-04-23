@@ -45,7 +45,7 @@ int parse_netlist(vector<vector<int> > &gates, vector<net_t> &nets,
         for(int i = 0; i < STR_BUF; i++) {
 
             // Parse string and store result at delimiter
-            if(str[i] >= '0' && str[i] <= '9' || str[i] == '.') {
+            if((str[i] >= '0' && str[i] <= '9') || str[i] == '.') {
                 // Add all numbers to current buf
                 buf.push_back(str[i]);
 
