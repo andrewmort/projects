@@ -45,7 +45,7 @@ int parse_netlist(vector<vector<int> > &gates, vector<net_t> &nets,
         for(int i = 0; i < STR_BUF; i++) {
 
             // Parse string and store result at delimiter
-            if(str[i] >= '0' && str[i] <= '9') {
+            if(str[i] >= '0' && str[i] <= '9' || str[i] == '.') {
                 // Add all numbers to current buf
                 buf.push_back(str[i]);
 
@@ -62,6 +62,7 @@ int parse_netlist(vector<vector<int> > &gates, vector<net_t> &nets,
                             chipy = atof(buf.c_str());
                         } else if (line_pos == 2){
                             unit = atof(buf.c_str());
+                            printf("Unit: %f\n", unit);
                         }
 
                     // Line 2 contains number of gates and nets

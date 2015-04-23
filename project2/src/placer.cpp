@@ -46,7 +46,6 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
     chipx = loc_chipx;
     chipy = loc_chipy;
     unit = loc_unit;
-    area_grid_points();
 
     // Set initial values
     grid= 10;
@@ -55,6 +54,8 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
     w_bp = 1;
     w_dp = 1;
     w_wl = 1;
+
+    area_grid_points();
 
     // Set initial gate locations
     locations->resize(gates->size());
@@ -74,6 +75,7 @@ void place(vector<point_t> &loc_locations, vector<vector<int> > &loc_gates,
 }
 
 double calc_cost(double *x, long int n) {
+    printf("Cost");
     return w_wl * calc_length() + w_dp * calc_density() + w_bp * calc_boundary();
 }
 
@@ -124,6 +126,81 @@ double calc_length() {
     return length;
     
 }
+
+double delta_length(unsigned idx, int dimen, double dist) {
+    double xnew, ynew;
+    double xmax, xmin, ymax, ymin;
+    double xmax_new, xmin_new, ymax_new, ymin_new;
+    unsigned i,j;
+    double initial = 0, final = 0;
+    point_t *loc;
+
+    // Set coordinates for current gate
+    xnew = locations->at(idx).x;
+    ynew = locations->at(idx).y;
+
+    // Update dimension that is changing
+    if (dimen == X_DIM) xnew += dist;
+    else ynew += dist;
+    
+
+    // Go through all nets connected to gate
+    for (i = 0; i < gates->at(idx).size(); i++) {
+        xmax = 0; xmin = 0; ymax = 0; ymin = 0;
+
+        // Find current net and pin value
+        int net = gates->at(idx).at(i);
+        int pin = nets->at(net).pin;
+
+        // Store locations of pins
+        if (pin != 0) {
+            xmax = exp(pins->at(pin).x / alpha);
+            xmin = exp(-pins->at(pin).x / alpha);
+            ymax = exp(pins->at(pin).y / alpha);
+            ymin = exp(-pins->at(pin).y / alpha);
+        }
+
+        // New values are same as regular values
+        xmax_new = xmax;
+        xmin_new = xmin;
+        ymax_new = ymax;
+        ymin_new = ymin;
+
+        // Go through all gates connected to current net
+        for (j = 0; j < nets->at(net).gates.size(); j++) {
+            loc = &(locations->at(nets->at(net).gates[j]));
+
+            xmax += exp(loc->x / alpha);
+            xmin += exp(-loc->x / alpha);
+            ymax += exp(loc->y / alpha);
+            ymin += exp(-loc->y / alpha);
+
+            // Find new max and min values
+            if (nets->at(net).gates[j] == idx) {
+                // Use new values when we are looking at the current gate
+                xmax_new += exp(xnew / alpha);
+                xmin_new += exp(-xnew / alpha);
+                ymax_new += exp(ynew / alpha);
+                ymin_new += exp(-ynew / alpha);
+            } else {
+                // Use current values for all other gates
+                xmax_new += exp(loc->x / alpha);
+                xmin_new += exp(-loc->x / alpha);
+                ymax_new += exp(loc->y / alpha);
+                ymin_new += exp(-loc->y / alpha);
+            }
+        }
+
+        // Determine initial half perimeter length
+        initial += alpha * (log(xmax) + log(xmin) + log(ymax) + log(ymin));
+
+        // Determine final half perimeter length
+        final += alpha * (log(xmax_new) + log(xmin_new) 
+            + log(ymax_new) + log(ymin_new));
+    }
+
+    return final - initial;
+}
 /*
 double calc_density() {
 	double cg = area/gridpts; 	// Capacity of gridpoints
@@ -150,6 +227,7 @@ double calc_density() {
 	double cg = area/gridpts;
 	int rowlength = (int) chipx/grid;
 	double cost = 0.0;
+    printf("Gridpts %f\n", gridpts);
 
 	for(int i = 0; i < gridpts; i++){
 		for(int j = 0; j < locations->size(); j++) {
@@ -158,7 +236,11 @@ double calc_density() {
 
 			cost += pow(((potential(xdist) * potential(ydist)) - cg), 2);
 		}
+        printf("Grid %d, Cost %f\n", i, cost);
+        printf("cg: %f\n", cg);
 	}
+
+    printf("Density: %f\n", cost);
 	return cost;
 }
 
@@ -198,7 +280,9 @@ double calc_boundary() {
 		if(xpos > chipx) cost += pow((xpos - chipx) / alpha, 2);
 		if(ypos > chipy) cost += pow((ypos - chipy) / alpha, 2);
 	}
-    	return cost;
+    
+    printf("Boundary: %f\n", cost);
+    return cost;
 }
 
 double uniform_double() {
@@ -214,7 +298,16 @@ double potential(double d) {
 void area_grid_points() {
 	area = 0;
 	for(int i = 1; i < gates->size(); i++) {
-		area = area + gates->at(i).size()*unit;
+		area += gates->at(i).size()*unit;
+        printf("Area: %f\n", area);
 	}
-	gridpts = chipx / grid * chipy / grid;
+
+    printf("Unit: %f\n", unit);
+    printf("Grid: %f\n", grid);
+    printf("Chipx: %f\n", chipx);
+    printf("Chipy: %f\n", chipy);
+    printf("Area: %f\n", area);
+	gridpts = (chipx / grid) * (chipy / grid);
+    printf("Grid points: %f\n", gridpts);
+
 }
