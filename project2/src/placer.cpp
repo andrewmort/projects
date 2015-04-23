@@ -15,7 +15,7 @@ double calc_length();
 double calc_density();
 double calc_boundary();
 double calc_cost(double *x, long int n);
-double potential(double d);
+double p(double d);
 void calc_gradient(double *g, double *x, long int n);
 void area_grid_points();
 double delta_length(unsigned idx, int dimen, double dist);
@@ -233,17 +233,19 @@ double calc_density() {
 	double cg = area/gridpts;
 	int rowlength = static_cast<int>(chipx/grid);
 	double cost = 0;
-	double temp_cost = 0;
+	double potential = 0;
     	
 	for(int i = 0; i < gridpts; i++){
-		temp_cost = 0;
+		potential = 0;
 		for(unsigned j = 1; j < locations->size(); j++) {
-			double xdist = (i % rowlength) * grid - locations->at(j).x;
-			double ydist = (i / rowlength) * grid - locations->at(j).y;
-            double area_factor = gates->at(j).size()*unit / pow(radius, 2);
-			temp_cost += area_factor * potential(xdist) * potential(ydist);
+			double xdist = abs((i % rowlength) * grid - locations->at(j).x);
+			double ydist = abs((i / rowlength) * grid - locations->at(j).y);
+            double gate_area = gates->at(j).size()*unit;
+            double C = gate_area / pow(radius, 2);
+			
+            potential += C * p(xdist) * p(ydist);
 		}
-		cost += pow(temp_cost - cg, 2);
+		cost += pow(potential - cg, 2);
 	}
 
     printf("Density: %f\n", cost);
@@ -259,17 +261,23 @@ double delta_density(unsigned idx, int dimen, double dist) {
 	if(dimen == Y_DIM) ynew += dist;
 
 	int rowlength = static_cast<int>(chipx/grid);
-	double initial = 0.0;
-	double final = 0.0;
+	double initial = 0;
+	double final = 0;
+    double potential = 0;
+    double potential_new = 0;
+    double C = gates->at(idx).size() * unit / pow(radius, 2);
 
 	for(int i = 0; i < gridpts; i++){
-		double xdist = (i % rowlength) * grid - locations->at(idx).x;
-		double ydist = (i / rowlength) * grid - locations->at(idx).y;
-		double xdist_new = (i % rowlength) * grid - xnew;
-		double ydist_new = (i / rowlength) * grid - ynew;
+		double xdist = abs((i % rowlength) * grid - locations->at(idx).x);
+		double ydist = abs((i / rowlength) * grid - locations->at(idx).y);
+		double xdist_new = abs((i % rowlength) * grid - xnew);
+		double ydist_new = abs((i / rowlength) * grid - ynew);
 
-		initial += pow(((potential(xdist) * potential(ydist)) - cg), 2);
-		final += pow(((potential(xdist_new) * potential(ydist_new)) - cg), 2);
+        potential = C * p(xdist) * p(ydist);
+        potential_new = C * p(xdist_new) * p(ydist_new);
+
+		initial += pow(potential - cg, 2);
+		final += pow(potential_new - cg, 2);
 	}
 	return final - initial;
 }
@@ -321,10 +329,10 @@ double uniform_double() {
     return rand()/double(RAND_MAX);
 }
 
-double potential(double d) {
-	if(-radius/2 <= d && d <= radius/2) return (1-2*pow(d,2)/pow(radius,2));
-	else if(radius <= d || d <= -radius) return 0;
-    else return (2*pow(abs(d) - radius,2)/pow(radius,2));
+double p(double d) {
+	if(0 <= d && d <= radius/2) return (1-2*pow(d,2)/pow(radius,2));
+	else if(radius /2 <= d && d <= radius) return (2*pow(d - radius,2)/pow(radius,2));
+    else return 0;
 }
 
 void area_grid_points() {
