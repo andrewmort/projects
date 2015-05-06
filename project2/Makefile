@@ -11,7 +11,7 @@ OBJ_C = $(patsubst src/%.c, obj/%.o, $(SRC_C))
 
 # Set tests
 #TEST = benchmarks
-TEST = benchmarks/tiny/tiny1
+TEST = benchmarks/toy/toy1
 
 # Find tests
 TEST_FILES = $(shell find $(TEST) -type f)
