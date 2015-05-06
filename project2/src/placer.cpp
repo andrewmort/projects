@@ -70,8 +70,9 @@ void place(vector<point_t> &locations, vector<vector<int> > &loc_gates,
     point_t *loc = reinterpret_cast<point_t *>(x);
 
     // Set initial values
-    grid = (loc_chipx * loc_chipy)/unit;
-    radius = 2;
+    grid = loc_chipx/sqrt(gates->size());
+    grid = 50;
+    radius = 60;
     alpha = grid*radius;
 
     // Total number of grid points
@@ -89,6 +90,8 @@ void place(vector<point_t> &locations, vector<vector<int> > &loc_gates,
     w_dp = 1;
     w_wl = calc_density(loc)/calc_length(loc);
     printf("After\n");
+
+    return;
 
     // Optimize cost function
     cg_descent(x, n, NULL, NULL, 1, calc_cost, calc_gradient, NULL, NULL);
@@ -287,8 +290,8 @@ double **get_grid(unsigned &num_x, unsigned &num_y, point_t *loc) {
     unsigned i;
     double **grid_vals;
 
-    num_y = static_cast<unsigned>(chipy/grid);
-    num_x = static_cast<unsigned>(chipx/grid);
+    num_y = static_cast<unsigned>(chipy/grid) + 1;
+    num_x = static_cast<unsigned>(chipx/grid) + 1;
 
     // Allocate grid x dimension
     grid_vals = static_cast<double **>(calloc(num_x, sizeof(double *)));
@@ -363,7 +366,7 @@ double calc_density(point_t *loc) {
     // Calculate total cost
     for (i = 0; i < num_x; i++) {
         for (j = 0; j < num_y; j++) {
-            printf("\n");
+            printf(" x: %f, y: %f, new potential: %f\n",i*grid, j*grid, grid_vals[i][j]);
             cost += pow(grid_vals[i][j] - cg, 2);
         }
     }
@@ -371,7 +374,6 @@ double calc_density(point_t *loc) {
 
     double old_cost = 0;
 
-    printf("Start old calc\n");
     for (x_pt = 0; x_pt <= chipx; x_pt += grid) {
         for (y_pt = 0; y_pt <= chipy; y_pt += grid) {
             potential = 0;
@@ -395,7 +397,7 @@ double calc_density(point_t *loc) {
 
     free_grid(grid_vals, num_x, num_y);
 
-    if (cost != old_cost) {
+    if (static_cast<int>(cost) != static_cast<int>(old_cost)) {
         printf("Cost (%f) does not equal old cost (%f)\n", cost, old_cost);
     }
 
@@ -472,7 +474,8 @@ double delta_density(unsigned cell, int dimen, double dist, double **grid_vals,
             pot_new = norm_area * p(xdist_new) * p(ydist_new);
 
             // Find delta for this change distance
-            delta += pow(grid_vals[idx_x][idx_y] + (pot_new - pot), 2);
+            delta += pow(grid_vals[idx_x][idx_y] + (pot_new - pot) - cg, 2) - 
+                     pow(grid_vals[idx_x][idx_y] - cg, 2);
         }
     }
 
@@ -506,10 +509,8 @@ double delta_density(unsigned cell, int dimen, double dist, double **grid_vals,
         }
 	}
 
-    if (final - initial != delta) {
+    if (static_cast<int>(final - initial) != static_cast<int>(delta)) {
         printf("Delta density new (%f) != old (%f)\n", delta, final - initial);
-    }else {
-        printf("Delta's Match\n");
     }
     //printf("Density Delta: %f\n", final - initial);
     return delta;

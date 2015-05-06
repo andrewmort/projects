@@ -6,7 +6,7 @@ using std::vector;
 
 #define X_DIM 0
 #define Y_DIM 1
-#define H_FACTOR 0.1F
+#define H_FACTOR 0.01F
 
 typedef struct pin_t {
     int net;
