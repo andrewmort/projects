@@ -30,10 +30,10 @@
 %	TITLE PAGE
 %----------------------------------------------------------------------------------------
 
-\title{ \Large \textsc{18760: Project 1}
+\title{ \Large \textsc{18760: Project 2}
 \\[2.0cm]
 \HRule{0.5pt}\\
-\Huge\textbf{\uppercase{A Satisfiability Solver}}
+\Huge\textbf{\uppercase{Analytical Placer}}
 \HRule{2pt} \\[0.5cm]
 \Large \today
 }
@@ -67,129 +67,146 @@
 
 \begin{homeworkProblem}[Introduction]
 
-    For this project, we were required to create an SAT solver that will read benchmarks in the DIMACS CNF format. Our solvers will be tested based on metrics of speed and range of tests that it can accommodate. As such, these were the factors that weighed most heavily on our minds during the concept phase of the project. Efficiency was the top goal in our project therefore this lead to the use of simple data structures with O(1) amortized runtime operations. To address the coolness
-    factor, we decided to implement three of the metrics discussed in class: (1) Two-literal Watching, (2) Clause Learning, and (3) Non-Chronological Backtracking.
+    The purpose of this project is to create a tool to automate gate placement in ASIC design. Our solution is analytical, which is to say it starts with a placement that is random and that does not consider overlap between gates. The tool iteratively works towards an optimal solution for the locations of all of the gates that focuses on the length of the nets and the density of the gate placement while staying inside a predetermined boundary. The solution is found using smooth cost
+    functions that can be minimized using numerical techniques. 
 
 \end{homeworkProblem}
 
-\begin{homeworkProblem}[Idea]
-    \begin{enumerate}
-        \item[\textbf{a:}] \textbf{Two-literal Watching}
-            Two-literal Watching is a metric to reduce the amount of work performed by the solver. The usefulness of the technique becomes apparent when looking at large clauses. The set of literals is effectively reduced to two, and the solver needs to perform no work at all on the other literals. This is because the SAT solver now only cares about conflicts or unit clauses. If it finds a clause is satisfied it doesn't care - a satisfied clause doesn't need any more work. In other words, for Two-literal
-            Watching you have a clause with two or more variables. In the case where there are two or more unassigned variables, the watched variables must be unassigned. Therefore, if you assign one of these to 0, you must visit the clause and either move to another unassigned variable or find that the clause goes unit. Only then is it possible that some other unit clause could imply the final watched variable to 0, making the clause a conflict. 
+\begin{homeworkProblem}[Goals]
 
-        \item[\textbf{b:}] \textbf{Clause Learning}
-            Clause learning takes advantage of work that was already done by the solver for conflict clauses found under previous implications. The learned clause is added to the end of the clause list and it causes a conflict more quickly so that you don't make the same decision and run into the same conflict again.  
-
-        \item[\textbf{c:}] \textbf{Non-Chronological Backtracking}
-            Non-Chronological Backtracking reduces the search space for the solver. Take for instance normal backtracking, where when a conflict is reached, the most recently made decision is reversed. The problem with this is that the most recent decision might not have caused the conflict. Non-Chronological Backtracking skips to the clause that caused the conflict saving work for the solver.
-    \end{enumerate}
+    \begin{itemize}
+        \item\textbf{75\% Area Utilization}
+        \item\textbf{Efficient Usage of Memory and Operational Overhead}
+        \item\textbf{Efficient Gradient and Cost Calculation}
+    \end{itemize}
 \end{homeworkProblem}
 
-\begin{homeworkProblem}[Implementation]
+\begin{homeworkProblem}[Cost Function Alorithms]
+
+In order to minimize the cost function and calculate the gradient, smooth, differentiable functions are needed to calculate the cost.
+
+\begin{homeworkSection}{Wirelength}
+
+    The length of a net is calculated using the half-perimeter method. That is, for all of the gates connected to a certain node, that nodes cost is: $$ C_{\textrm{wirelength}} = \max(x_1, x_2, ..., x_n) - \min(x_1, x_2, ..., x_n) + \max(y_1, y_2, ..., y_n) - \min(y_1, y_2, ..., y_3) $$ This however, is not differentiable so we use the Logarithmic-Exponential analytical form for max:
+    \begin{align*}
+    \centering
+        \max(x_1, x_2, ..., x_n) &= \alpha \log\left(e^{x_1/\alpha} + e^{x_2/\alpha} + ... + e^{x_n/\alpha}\right)\\
+        \min(x_1, x_2, ..., x_n) &= -\alpha \log\left(e^{-x_1/\alpha} + e^{-x_2/\alpha} + ... + e^{-x_n/\alpha}\right)
+    \end{align*}
+
+    Substituting these functions into the cost function above will yield a differentiable function and thus allow the computation of the gradient.
     
-    \begin{enumerate}
-        \item[\textbf{a:}] \textbf{Two-literal Watching}
-            The clauses are represented as rows in a column vector. Each of these rows (clauses) is itself a vector 
-            of integers that represents the polarity of the variables. Two-literal watching is implemented using a 
-            vector sized to the total number of variables. Each entry in this vector is a tuple of sets that together 
-            contain the positive and the negative lists of clauses that are currently watching the positive or 
-            negative version of this variable respectively. Not every
-            instance of each variable is contained in these lists, only the watched variables from each clause. The 
-            watched list vector is indexed by the absolute value of each possible variable: i.e. 
-            $$ \texttt{watched\_list[i].pos} $$  will access the set of clauses that contain the watched variable $i$ 
-            in its positive polarity. Similarly for the negative polarity.\\
+\end{homeworkSection}
 
-            At the beginning of the program, the watch list is empty and the vector of assigned values is initialized 
-            to \texttt{UNASSIGNED}. The watch list is populated by calling the function {\tt assign} with the 
-            variable 0, since 0 is not a valid variable.  The clauses are then propagated and the first two literals 
-            in each clause are chosen as the watched variables. Any unit clauses are added to the assignment queue so 
-            that they can be assigned values from the beginning.\\
+\begin{homeworkSection}{Density}
 
-            Now that the watch list is initialized and populated, we should move on to discussing how it is used. The 
-            solver uses a queue (\texttt{assignment\_queue}) to keep track of which variables to process next. These 
-            variables come either from a clause going unit or from a variable decision being made. For each variable 
-            in the assignment queue, the assignment is made and then the watch list for the opposite polarity of that 
-            variable is inspected. For each clause in the watch list, the program will choose a new watched variable 
-            that is currently unassigned, find a unit clause and add it to the assignment queue, or determine if the 
-            new assignment creates a conflict.\\
+    The density cost is determined by imposing a grid over the circuit and assigning a capacity to each grid point then counting how many gates are touching that grid point. The function takes the form: $$ \sum_{\textrm{gridpoints } g} \left( C_g - \textrm{\# of gates touching grid g}\right)^2 $$ Here, again, we run into the non-differentiable problem because appurtenance is discontinuous. However, if we adjust our definition of belonging from an ``in'' or ``out''
+    decision, then this function becomes smooth. This function would need to account for the area of the cell. Below is a smooth, differentiable function that represents the degree of appurtenance of each cell to each grid, and then the new cost function is shown.
+    \begin{align*}
+    \centering
+        p(d) &= \left\{
+            \begin{array}{ll}
+                1 - 2d^2/r^2 & (0 \le d \le r/2)\\
+                2(d-r)^2/r^2 & (r/2 \le d \le r)
+            \end{array}
+            \right.\\
+        \textrm{Potential(c, g)} &=  \textrm{area}(c)/r^2 \cdot p(|x_g - x_c|) \cdot p(|y_g - y_c|)\\
+        \textrm{Penalty} &= \sum_{\textrm{Grid } g} \left[ \left( \sum_{\textrm{Cell } c} \textrm{Potential}(c,g)\right) - \textrm{Capacity}(g)\right]^2
+    \end{align*}
+\end{homeworkSection}
 
-            When a conflict occurs, the index of the conflicting clause is returned and operated on by the 
-            backtrack function which implements clause learning and the non-chronological backtracking. When a 
-            backtrack does occur, we don't have to change the watched literals which saves precious computation time. 
-            If there is no conflict and no more unit clauses remain, the assign function will return -1 to indicate 
-            that no faults have occurred and the program will make the next assignment until all variables are 
-            assigned.
+\begin{homeworkSection}{Boundary}
 
-        \item[\textbf{b:}] \textbf{Clause Learning}
-            When a variable is assigned and it causes a conflict, the index to the clause that had the conflict is
-            returned. The program then knows that a conflict has occurred and calls the backtrack function with the
-            conflicting clause. The firstUIP algorithm is used to find the conflict clause which is then added to the
-            overall clause list.  The firstUIP algorithm starts by setting $C$ equal to the conflicting clause
-            and then finding the resolvent of $C$ and the antecedent of the most recently
-            assigned variable in $C$. The antecedent of a variable is the clause that caused that variable to 
-            become unit. The resolvent is found by combing $C$ and the antecedent of $C$ and removing both polarities
-            of the most recently assigned variable in $C$. The resolvent is then assigned to $C$ and the loop 
-            continues until there are no longer more than 2 variables in $C$ that were assigned in the current level.
-            The checking for the loop is performed by finding the two most recent variables in $C$ and ensuring that
-            the second most recently assigned variable was assigned in the current level. The resolvent is found
-            by looping through $C$ and removing the most recent variable by moving the back element in $C$ to take
-            its place. Once $C$ has been created without the most recent variable, all the variables from the
-            antecedent are copied into $C$ except for duplicates already in $C$ and the most recently assigned 
-            variable from $C$. In this way we can easily find the resolvent and the antecedent. The final value
-            of $C$ is the learned clause that gets added to main clause list. If there are any unassigned variables
-            in this clause after removing the assignments from backtracking, we labels these as watched variables.
+    The boundary penalty is more simple than the last two cost functions. It has two components: one for the left and one for the right sides of the boundary. Shown below is the penalty for the $x$ direction, it is the same for the $y$ direction. 
+     \begin{align*}
+            \textrm{Penalty-Left(x)} &= \left[ x < x_{\textrm{left}} \implies \left(\dfrac{x-x_{\textrm{left}}}{\alpha}\right)^2\right]\\
+            \textrm{Penalty-Right(x)} &= \left[ x < x_{\textrm{right}} \implies \left(\dfrac{x-x_{\textrm{right}}}{\alpha}\right)^2\right]
+     \end{align*}
+\end{homeworkSection}
+    
+\end{homeworkProblem}
 
-        \item[\textbf{c:}] \textbf{Non-Chronological Backtracking}
-        Non-Chronological backtracking is implemented using the learned clause $C$ from the clause learning step.
-        The most recently assigned variable in $C$ should now be the only variable in $C$ that was assigned in the
-        current level. Therefore, to do backtracking, we can look at the next most recently assigned variable, which
-        will be in the next highest level after the current level. We will backtrack to this level and then make the 
-        opposite assignment of the assignment performed at that level. The assigned variables and levels after this
-        level are removed since we don't care about them anymore. Another thing that is done is to keep track of 
-        how many times we've backtracked to the same variable by keeping a count. When this count is greater than 1,
-        meaning that we've set both positive and negative versions of this variable, we will continue to backtrack
-        up to the next level. This prevents the simulator from trying to set a variable continuously from positive
-        to negative and back to positive again. Although the clause learning would prevent this from occurring 
-        forever, we can further reduce this using the technique described. 
+\begin{homeworkProblem}[Milestone Placer]
+    
+    \begin{homeworkSection}{Data Structures}
+                Locations for the gates are stored in an array of 2-tuples containing the $x$ and $y$ coordinates. The array is of length $2N$, where $N$ is the number of gates in the circuit. \vspace{0.2cm}
 
-        \item[\textbf{d:}]\textbf{Variable Selection}
-            The variable selection is done by randomly selecting a variable from the remaining unassigned variables.
-            The variable assignments are kept in a vector and this vector is indexed randomly. From this index 
-            location the vector is searched until the first unassigned variable is found. If no unassigned variables
-            are found, the function returns 0 which indicates that the problem has been satisfied.
+                Gates are stored in an array of arrays containing that gate's nets. The total length of this array is $C \cdot N$ where $C \ll N$. \vspace{0.2cm}
+                
+                Nets are stored in an inverse structure to the gates --- the net structure is a vector of the 2-tuples that contain both the pin, if any is connected to this net, and a vector of the gates connected to the net. The total space required for this structure is $2\cdot C \cdot M$, where $M$ is the number of nets and $C$ is some constant, $C \ll M$.\vspace{0.2cm}
+                
+                Pins are stored in an array of 3-tuples that contain the attached net identifier as well as the $x$ and $y$ coordinates of the pin. The total space used for this structure is $3\cdot P$, where $P$ is the number of pins.\vspace{0.2cm}
+                
+                This redundant data is kept because we prioritized a lower operational-overhead over a lower memory overhead. These structures allow for a constant lookup time given any identifier (the gate name, net name, or pin name). The total spacial overhead is $2N + C(N+2M) + 3P$.         
+    \end{homeworkSection}
+    
+    \begin{homeworkSection}{Gradient Calculation}
 
-        \item[\textbf{e:}]\textbf{Semi Random Restarts}
-            As described in the non-chronological backtracking section, the number of times we've backtracked to 
-            a certain level is recorded. When we've made more than 1 backtrack for each level, we go back to level
-            0 and essentially restart from the beginning. Since the variable selection is random, the next assignment
-            is randomly chosen and the SAT solver starts over.
+        In the gradient calculation, we are looking to see how much the cost changes when you move a gate in either the $x$ or $y$ direction. This must be done for all of the gates. We broke up the code into several functions for readability. The gradient calculation is shown below:
 
-    \end{enumerate}
+        \begin{align*}
+            \dfrac{\partial f}{\partial x_i} &= \dfrac{F(x_i + h) - F(x_i)}{h}\\
+            \dfrac{\partial f}{\partial y_i} &= \dfrac{F(y_i + h) - F(y_i)}{h}
+        \end{align*}
+The gradient calculates this derivative for both coordinates of every cell in the circuit. The functions below are summed together to create an expression for the components representing each of our penalties.
+        \begin{enumerate}
+            \item[] \textbf{Wirelength:} For a specific gate moving in a specific direction, you will go through all of the nets connected to that gate and recalculate the smooth wire length for each of those nets with the initial and with the new location. The difference between these two values is returned and used to find the derivative for that specific configuration. This results in a complexity, for a single gate, of $\textrm{O(1)}$ if the number of the nets connecting to a
+            gate is much smaller than the number of gates.
+
+            \item[] \textbf{Density:} We implemented this function in a rather inefficient way. The density was fully calculated twice, once for the original density and again for the new density. The complexity of this function was $\textrm{O}(M \cdot N)$, where $N$ is the number of gates and $M$ is the number of grid points. This is due to the fact that we must visit every grid point, and, for each grid point visited, we must visit every cell.
+
+            \item[] \textbf{Boundary:} We calculated the old and the new boundary cost for the placement of that gate and take the difference. The complexity of this function is $\textrm{O(1)}$
+        \end{enumerate}
+
+        The overall complexity of the gradient function is $\textrm{O}(N^2 \cdot M)$ because the gradient has to be recalculated for every gate.
+    
+    \end{homeworkSection}
+
+    \begin{homeworkSection}{Difficulties}
+        Although our cost functions were accurate, we didn't know how to correctly call the gradient descent and therefore our placement wasn't valid.
+    \end{homeworkSection}
+    
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Final Placer]
+    
+    \begin{homeworkSection}{Data Structures}
+        The only change in the Final Placer from the Milestone was the addition of a Grid-points data structure, made with an array of doubles to store the value of the density of the grid-points to make the density calculation faster. 
+    \end{homeworkSection}
+
+    \begin{homeworkSection}{Density Calculation}
+        This function was updated from the milestone by using the grid-points structure. It goes through every cell and for each cell, it'll find all the grid-points within the radius of the cell and updates the potential for just those grid-points. After going through all of the cells, the density penalty is formulated by visiting every grid-point and take the square of the difference between the new density and the capacity of the grid-point. The complexity of this function drops to
+        $\textrm{O}(N+M)$, where $N$ is the number of gate and $M$ is the number of grid-points.  
+    \end{homeworkSection}
+    
+    \begin{homeworkSection}{Density Gradient}
+        The grid-point matrix used in the density cost calculation is also used to calculate the gradient. Before the gradient is calculated, the array is populated in the same way as before --- by going through every cell and calculating the potential. Then, when calculating the gradient for a specific cell, we must find how the potential for all of the grid-points around the cells change, and then calculate the difference following the density function given above. This results in a
+        final complexity for the whole gradient function of $\textrm{O}(N)$.
+    \end{homeworkSection}
+
 \end{homeworkProblem}
 
 \begin{homeworkProblem}[Test Results]
-        The sat solver is able to correctly solve each test we provided with as you can see in the appendix.
+    \begin{center}
+        \begin{tabular}{c|c|c}
+        Circuit & Wirelength & Utilization\\ \hline \hline
+        toy1 & 749.78 & 29\%\\ 
+        toy2 & 1371.10 & 31\%\\
+        fract & 5707.42 & 52\%\\
+        industry1 & 74669.05 & 53\%\\
+        primary1 & 35526.03 & 68\%\\
+        struct & 61857.62 & 57\%\\
+        \end{tabular}
+    \end{center}
 
 \end{homeworkProblem}
 
-\begin{homeworkProblem}[Conclusion]
-    The goal for the project was to implement a SAT solver with Two-literal Watching, Clause Learning, and Non-chronological Backtracking. These were successfully implemented as discussed above. However, during the process, we implemented a branching heuristic that chooses the next variable on which to make a decision randomly. When all of the tests are run together, they take about 30 minutes to complete. If we were to do this again, we would add more intelligent branching
-    heuristics and try to reduce the number of times that we traverse the vectors. In the end, we have completed a solver that correctly resolves all test in a reasonable amount of time.
-
-\end{homeworkProblem}
-
-\clearpage
-
-\begin{homeworkProblem}[Appendix]
-
-Solver Output:
-
-\begin{quote}
-  \lstinputlisting[linewidth=\linewidth,breaklines=true]{source/out.txt}  
-\end{quote}
+\begin{homeworkProblem}[Final Notes]
     
+    After playing around with the loop that runs the gradient descent function, we found that two iterations were enough to generate a good placement. We start with a course grid, a small radius, and a higher weight on the wirelength. In the next iteration, we have a much finer grid, a larger radius, and the weight of the wirelength is lower than the weight of the weight density.  
+
 \end{homeworkProblem}
+
 %----------------------------------------------------------------------------------------
 
 \end{document}
