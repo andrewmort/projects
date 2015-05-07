@@ -11,7 +11,7 @@ OBJ_C = $(patsubst src/%.c, obj/%.o, $(SRC_C))
 
 # Set tests
 #TEST = benchmarks
-TEST = benchmarks/toy/toy1
+TEST = benchmarks/toy
 
 # Find tests
 TEST_FILES = $(shell find $(TEST) -type f)
@@ -31,8 +31,8 @@ CC = gcc -m32 -lm -O3 -I include
 FLAGS= -Wno-deprecated -Wno-write-strings -Wall -Wold-style-cast \
 -Wformat=2 -ansi -pedantic -O3 -I include $(DEBUG)
 
-all: run
-#all: $(EXENAME)
+#all: run
+all: $(EXENAME)
 
 # Compile main program by linking all object files (depends on object files)
 $(EXENAME): $(OBJ) $(OBJ_C)
